@@ -123,12 +123,15 @@ export function useTrades(conditionId: string | undefined, limit = 50) {
 interface MatchedPairsListResponse {
   pairs: ArbitragePair[];
   total: number;
-  source: "predexon" | "local";
+  source: "predexon" | "openai" | "heuristic";
 }
 
-export function useMatchedPairs(minSimilarity = 60) {
+export function useMatchedPairs(
+  minSimilarity = 60,
+  sort: "similarity" | "spread" = "similarity",
+) {
   return useSWR<MatchedPairsListResponse>(
-    `/api/markets/matched-pairs?min_similarity=${minSimilarity}`,
+    `/api/markets/matched-pairs?min_similarity=${minSimilarity}&sort=${sort}`,
     fetcher,
     {
       refreshInterval: 60_000,

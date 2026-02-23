@@ -6,6 +6,7 @@ import {
   PredexonApiError,
 } from "@/lib/predexon";
 import { matchMarkets, toArbitragePairs } from "@/lib/market-matcher";
+import { hasOpenAIKey } from "@/lib/openai";
 import type { ArbitragePair } from "@/types/market";
 
 // ---------------------------------------------------------------------------
@@ -71,8 +72,6 @@ async function fetchViaPredexon(
     };
   });
 
-  pairs.sort((a, b) => (b.spread ?? 0) - (a.spread ?? 0));
-
   return {
     pairs,
     total: pairsRes.pagination.count,
@@ -89,19 +88,19 @@ async function fetchViaLocalMatcher(
     listKalshiMarkets({ status: "open", sort: "volume", limit: 100 }),
   ]);
 
-  const matches = matchMarkets(
+  const matches = await matchMarkets(
     polyRes.markets,
     kalshiRes.markets,
     minSimilarity,
   );
 
   const allPairs = toArbitragePairs(matches);
-  allPairs.sort((a, b) => (b.spread ?? 0) - (a.spread ?? 0));
+  const source = hasOpenAIKey() ? "openai" : "heuristic";
 
   return {
     pairs: allPairs.slice(0, limit),
     total: allPairs.length,
-    source: "local",
+    source,
   };
 }
 
@@ -110,6 +109,7 @@ export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams;
     const minSimilarity = Number(sp.get("min_similarity") ?? 60);
     const limit = Math.min(Number(sp.get("limit") ?? 50), 200);
+    const sort = (sp.get("sort") ?? "similarity") as "similarity" | "spread";
 
     let result: { pairs: ArbitragePair[]; total: number; source: string };
 
@@ -121,6 +121,12 @@ export async function GET(req: NextRequest) {
       } else {
         throw err;
       }
+    }
+
+    if (sort === "spread") {
+      result.pairs.sort((a, b) => (b.spread ?? 0) - (a.spread ?? 0));
+    } else {
+      result.pairs.sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0));
     }
 
     return NextResponse.json(result);

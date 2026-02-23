@@ -5026,6 +5026,7 @@ __metadata:
     lucide-react: "npm:^0.563.0"
     next: "npm:16.1.6"
     next-themes: "npm:^0.4.6"
+    openai: "npm:^6.22.0"
     pg: "npm:^8.17.2"
     postcss: "npm:^8.5.6"
     prisma: "npm:^7.3.0"
@@ -9015,6 +9016,23 @@ __metadata:
     powershell-utils: "npm:^0.1.0"
     wsl-utils: "npm:^0.3.0"
   checksum: 10c0/7aeeda4131268ed90f90e7728dda5c46bb0c6205b27a4be3e86ea33593e30dd393423e20e31c00802a8e635ef59becaee33ef9749a8ceb027567cd253e9e7b1e
+  languageName: node
+  linkType: hard
+
+"openai@npm:^6.22.0":
+  version: 6.22.0
+  resolution: "openai@npm:6.22.0"
+  peerDependencies:
+    ws: ^8.18.0
+    zod: ^3.25 || ^4.0
+  peerDependenciesMeta:
+    ws:
+      optional: true
+    zod:
+      optional: true
+  bin:
+    openai: bin/cli
+  checksum: 10c0/b0dcfce1fcaa84b9c92a00745fcd1bfa7573002d50e7a32dfe91b6e0acd6e950814891cef79de31f406f0454c6042baceb7c3843d9beadbd57148fbe42111a6f
   languageName: node
   linkType: hard
 
