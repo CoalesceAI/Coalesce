@@ -12,7 +12,10 @@ const CreateTeamPage = () => {
   const { user } = useUser();
 
   // get the user using swr
-  const { data } = useSWR(user ? `/api/team/get-team` : null, fetcher);
+  const { data } = useSWR<{ slug?: string }>(
+    user ? `/api/team/get-team` : null,
+    fetcher,
+  );
   const slug = data?.slug;
 
   useEffect(() => {

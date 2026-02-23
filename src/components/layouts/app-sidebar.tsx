@@ -1,4 +1,6 @@
-import { Home, Settings, Command, Plug2, ShieldCheck } from "lucide-react";
+"use client";
+
+import { Home, Settings, Command, BarChart3, ArrowLeftRight } from "lucide-react";
 import { useTeam } from "@/app/providers/team-provider";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
@@ -21,6 +23,16 @@ const items = [
     title: "Dashboard",
     url: (teamSlug: string) => `/${teamSlug}/dashboard`,
     icon: Home,
+  },
+  {
+    title: "Markets",
+    url: (teamSlug: string) => `/${teamSlug}/markets`,
+    icon: BarChart3,
+  },
+  {
+    title: "Arbitrage",
+    url: (teamSlug: string) => `/${teamSlug}/arbitrage`,
+    icon: ArrowLeftRight,
   },
   {
     title: "Settings",

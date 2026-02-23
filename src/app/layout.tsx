@@ -4,7 +4,7 @@ import WorkspaceLayout from "@/components/layouts/workspace-layout";
 
 export const metadata: Metadata = {
   title: "Perception",
-  description: "Secure your AI Systems, from AI.",
+  description: "AI-powered prediction market terminal",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body suppressHydrationWarning>
+      <body className="font-sans" suppressHydrationWarning>
         <WorkspaceLayout>{children}</WorkspaceLayout>
       </body>
     </html>

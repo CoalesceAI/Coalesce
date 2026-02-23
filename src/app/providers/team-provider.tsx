@@ -9,12 +9,11 @@ import {
   useEffect,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import type { Team } from "@/types/team";
 import useSWR from "swr";
 import { useUser } from "@clerk/nextjs";
 import { useMemo } from "react";
 import { fetcher } from "@/lib/utils";
-import { User } from "@repo/db";
+import { User, Team } from "@/generated";
 
 interface TeamContextType {
   teamData: Team | null;
@@ -51,19 +50,22 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isLoaded, isSignedIn, teamsLoading, team, pathname, router]);
 
-  // Setting team and user data
+  // Setting team and user data (deferred to avoid synchronous setState in effect)
   useEffect(() => {
-    if (team && !("error" in team)) setTeamData(team);
-    if (user) {
-      setUserData({
-        id: user.id,
-        authId: user.id,
-        name: user.fullName,
-        email: user.primaryEmailAddress?.emailAddress || "",
-        createdAt: new Date(user.createdAt || new Date()),
-        updatedAt: new Date(user.updatedAt || new Date()),
-      });
-    }
+    const timeoutId = setTimeout(() => {
+      if (team && !("error" in team)) setTeamData(team);
+      if (user) {
+        setUserData({
+          id: user.id,
+          authId: user.id,
+          name: user.fullName,
+          email: user.primaryEmailAddress?.emailAddress || "",
+          createdAt: new Date(user.createdAt || new Date()),
+          updatedAt: new Date(user.updatedAt || new Date()),
+        });
+      }
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [team, user]);
 
   const providerValue = useMemo(
@@ -73,7 +75,7 @@ export const TeamProvider = ({ children }: { children: ReactNode }) => {
       loading: teamsLoading || !isLoaded,
       setTeamData,
     }),
-    [teamData, userData, teamsLoading, isLoaded]
+    [teamData, userData, teamsLoading, isLoaded],
   );
 
   return (

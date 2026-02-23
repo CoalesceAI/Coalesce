@@ -43,7 +43,7 @@ export default function KBar({ children }: { children: React.ReactNode }) {
         // Map child items into actions
         const childActions =
           navItem.items?.map(
-            (childItem: (typeof navItems)[number]["items"][number]) => ({
+            (childItem) => ({
               id: `${childItem.title.toLowerCase()}Action`,
               name: childItem.title,
               shortcut: childItem.shortcut,

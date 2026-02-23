@@ -84,7 +84,7 @@ export function MembersTable({
   const canChangeRole = (member: Member) => {
     if (currentUserRole === "MEMBER") return false;
     const superAdminCount = members.filter(
-      (m) => m.role === "SUPER_ADMIN"
+      (m) => m.role === "SUPER_ADMIN",
     ).length;
     if (member.role === "SUPER_ADMIN" && superAdminCount <= 1) return false;
     if (currentUserRole === "ADMIN") return member.role === "MEMBER";
@@ -170,7 +170,7 @@ export function MembersTable({
               </TableCell>
               <TableCell>
                 <Badge
-                  variant={member.status === "ACTIVE" ? "success" : "warning"}
+                  variant={member.status === "ACTIVE" ? "default" : "secondary"}
                 >
                   {member.status}
                 </Badge>
@@ -346,7 +346,7 @@ export function MembersTable({
                   setRoleMember(null);
                 } catch (e) {
                   toast.error(
-                    e instanceof Error ? e.message : "Failed to update role"
+                    e instanceof Error ? e.message : "Failed to update role",
                   );
                 } finally {
                   setSavingRole(false);

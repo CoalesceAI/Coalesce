@@ -5,8 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function fetcher(url: string) {
-  return fetch(url).then((res) => res.json());
+export async function fetcher<T = unknown>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    const err = new Error(body?.error ?? `Request failed (${res.status})`);
+    (err as unknown as Record<string, unknown>).status = res.status;
+    (err as unknown as Record<string, unknown>).info = body;
+    throw err;
+  }
+  return res.json() as Promise<T>;
 }
 
 export function formatBytes(bytes: number): string {

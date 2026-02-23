@@ -10,7 +10,7 @@ import {
   useMemo,
 } from "react";
 import { useRouter } from "next/navigation";
-import { TeamUser, User } from "@repo/db";
+import { User, TeamUser } from "@/generated";
 import useSWR from "swr";
 import { useUser } from "@clerk/nextjs";
 import { fetcher } from "@/lib/utils";
@@ -40,13 +40,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!userLoading && isLoaded) {
-      if (dbUser && !("error" in dbUser)) {
-        // Successfully retrieved user data
-        setUserData(dbUser);
-      } else if (!isSignedIn) {
-        // Redirect to 404 if no user is found, or user is not signed in
-        router.push("/404");
-      }
+      const timeoutId = setTimeout(() => {
+        if (dbUser && !("error" in dbUser)) {
+          setUserData(dbUser);
+        } else if (!isSignedIn) {
+          router.push("/404");
+        }
+      }, 0);
+      return () => clearTimeout(timeoutId);
     }
   }, [dbUser, userLoading, isSignedIn, isLoaded, router]);
 
@@ -57,7 +58,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       loading: userLoading,
       setUserData,
     }),
-    [userData, userLoading]
+    [userData, userLoading],
   );
 
   return (

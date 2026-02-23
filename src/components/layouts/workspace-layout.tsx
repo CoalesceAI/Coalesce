@@ -6,13 +6,6 @@ import { UserProvider } from "@/app/providers/user-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import { Suspense } from "react";
-import { Inter as FontSans } from "next/font/google";
-import { cn } from "@/lib/utils";
-
-const fontSans = FontSans({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
 
 export default function WorkspaceLayout({
   children,
@@ -30,12 +23,7 @@ export default function WorkspaceLayout({
   return (
     <ClerkProvider>
       <TooltipProvider>
-        <div
-          className={cn(
-            "min-h-screen bg-background font-sans antialiased",
-            fontSans.variable
-          )}
-        >
+        <div className="min-h-screen bg-background font-sans antialiased">
           {isPublicPage ? (
             <div className="min-h-screen bg-background antialiased">
               {children}
