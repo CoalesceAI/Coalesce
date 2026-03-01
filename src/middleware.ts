@@ -9,6 +9,8 @@ const isPublicRoute = createRouteMatcher([
   "/public(.*)",
   "/api/user/create-user(.*)",
   "/api/public(.*)",
+  "/api/slack/events(.*)",
+  "/api/events/ingest(.*)",
   "/accept-invitation(.*)",
 ]);
 

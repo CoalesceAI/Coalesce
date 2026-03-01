@@ -1,4 +1,4 @@
-import { Home, Settings, Command, Plug2, ShieldCheck } from "lucide-react";
+import { Home, Settings, Command, Ticket, Zap } from "lucide-react";
 import { useTeam } from "@/app/providers/team-provider";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
@@ -21,6 +21,16 @@ const items = [
     title: "Dashboard",
     url: (teamSlug: string) => `/${teamSlug}/dashboard`,
     icon: Home,
+  },
+  {
+    title: "Tickets",
+    url: (teamSlug: string) => `/${teamSlug}/tickets`,
+    icon: Ticket,
+  },
+  {
+    title: "Events",
+    url: (teamSlug: string) => `/${teamSlug}/events`,
+    icon: Zap,
   },
   {
     title: "Settings",
