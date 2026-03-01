@@ -85,3 +85,39 @@ Client state is managed with React Context + SWR (no Redux/Zustand). Use `useTea
 Required: `DATABASE_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_APP_URL`.
 
 For local development with Clerk webhooks, use ngrok and set `NEXT_PUBLIC_APP_URL` to the tunnel URL. See `docs/setup.md` for full setup.
+
+## Git Workflow
+
+### Branch structure
+- `main` — shared foundation only: schema changes, dependency updates, gitignore, shared infra (middleware, sidebar, docs). Never dump feature work directly on main.
+- `feat/<workstream>` — one branch per logical workstream or plan, branched off main after shared foundation is committed. Example: `feat/plan-1-core-platform`, `feat/plan-2-sdk-ses-workflow`.
+
+### Commit discipline
+- Atomic commits per logical unit (one lib file, one API group, one page). Never one giant commit per branch.
+- Commit message format: `feat(scope): short description` — e.g. `feat(plan-1): add Slack Events API endpoint`
+- Always include `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>` trailer.
+- Stage files explicitly by path (`git add src/lib/slack.ts`), never `git add -A` or `git add .`.
+- When schema changes land on main via `db:push`, commit `prisma/schema.prisma` + `yarn.lock`/`package.json` together as one "foundation" commit before branching.
+
+### Worktrees
+- Use git worktrees (`EnterWorktree` tool or `git worktree add`) when two workstreams need to be implemented in parallel without branch-switching overhead.
+- Each worktree works on its own feature branch; merge/PR back to main independently.
+
+### DB changes
+- This repo uses `yarn db:push` (no migration history). Run on main before creating feature branches so both branches share the same schema baseline.
+- After any schema change, always run `yarn db:generate` and commit the regenerated client alongside the schema.
+
+## Parallelization
+
+**Always maximize parallel execution:**
+- Fire independent tool calls in a single response (reads, searches, writes to non-overlapping files).
+- Launch background agents for independent workstreams that write to non-overlapping files — e.g. Plan 1 lib files and Plan 2 SDK files can be written simultaneously.
+- Read all needed files upfront in one parallel batch before starting implementation, not one at a time.
+- When implementing two plans, do deps install once, then write both plans' files in parallel batches grouped by layer (lib → API → pages).
+
+## Token Efficiency
+
+- Load only the relevant plan file when executing a workstream — do not load PRD + plan together unless bridging product decisions into implementation.
+- Use `Read` with `offset`/`limit` for large files; read only the sections needed.
+- Prefer `Grep`/`Glob` over full file reads when searching for a specific pattern.
+- Reuse already-read file content within a session rather than re-reading.
