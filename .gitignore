@@ -30,7 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env.local
 .env.development
 .env.production
@@ -44,4 +44,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma generated client
 /app/generated/prisma
+
+# SDK build artifacts
+packages/sdk/dist/
+packages/sdk/node_modules/
+
+# Claude Code local settings (keep project settings, ignore personal)
+.claude/settings.local.json
+.claude/.claude-session*
+.claude/worktrees/
+.claude/projects/
