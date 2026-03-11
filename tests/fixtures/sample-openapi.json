@@ -1,0 +1,105 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AgentMail API",
+    "version": "0.1.0",
+    "description": "API-first email platform for AI agents"
+  },
+  "servers": [
+    {
+      "url": "https://api.agentmail.to/v0",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/inboxes": {
+      "post": {
+        "summary": "Create an inbox",
+        "operationId": "createInbox",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "Username for the inbox address"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inbox created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "address": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inboxes/{inboxId}/messages": {
+      "get": {
+        "summary": "List messages in an inbox",
+        "operationId": "listMessages",
+        "parameters": [
+          {
+            "name": "inboxId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "subject": { "type": "string" },
+                          "from": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    }
+  },
+  "security": [
+    { "ApiKeyAuth": [] }
+  ]
+}
