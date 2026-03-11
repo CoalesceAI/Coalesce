@@ -1,0 +1,76 @@
+---
+title: "Sample Documentation Page"
+slug: sample
+description: "A sample MDX file for testing the docs loader."
+---
+
+import Tabs from '@components/tabs'
+import { CodeBlock } from 'some-lib'
+
+## Introduction
+
+AgentMail provides a powerful API for managing email communications. Here is how to get started.
+
+## Available SDKs
+
+<Cards>
+
+{" "}
+
+<Card
+  title="Python SDK"
+  icon="fa-brands fa-python"
+  href="https://github.com/agentmail-to/agentmail-python"
+>
+  Use our Python SDK for seamless integration.
+</Card>
+<Card
+  title="Node SDK"
+  icon="fa-brands fa-node-js"
+  href="https://github.com/agentmail-to/agentmail-node"
+>
+  Use our Node SDK for seamless integration.
+</Card>
+
+</Cards>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="What is AgentMail?">
+    AgentMail is an API-first email platform designed specifically for building
+    AI agents that can communicate over email.
+  </Accordion>
+  <Accordion title="How is AgentMail different?">
+    The key difference is our focus on **conversational agents**.
+  </Accordion>
+</AccordionGroup>
+
+## Core Concepts
+
+Here is a list of important concepts:
+
+- **Inboxes** - where emails are received
+- **Threads** - groups of related messages
+- **Messages** - individual emails
+
+## Code Example
+
+```typescript
+import { AgentMail } from 'agentmail';
+
+const client = new AgentMail({ apiKey: process.env.AGENTMAIL_API_KEY });
+
+const inbox = await client.inboxes.create({ username: 'my-agent' });
+console.log(inbox.address);
+```
+
+## Self-Closing Components
+
+<Note title="Important" />
+
+<Warning icon="alert" />
+
+## Summary
+
+This is the end of the sample documentation page. The content above should be preserved while JSX components and frontmatter should be stripped.
