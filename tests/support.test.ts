@@ -1,6 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { supportRoute } from '../src/routes/support.js';
 import { Hono } from 'hono';
+
+// ---------------------------------------------------------------------------
+// Mock the diagnosis service so support.test.ts never calls real Claude API
+// ---------------------------------------------------------------------------
+
+vi.mock('../src/services/diagnosis.js', () => ({
+  diagnose: vi.fn().mockResolvedValue({
+    status: 'unknown',
+    explanation: 'Mock diagnosis response',
+  }),
+}));
 
 // Build a test app with the supportRoute factory
 function buildTestApp() {
@@ -71,7 +82,7 @@ describe('POST /support', () => {
     expect(res.headers.get('content-type')).toContain('application/json');
   });
 
-  it('stub response includes status field with value', async () => {
+  it('response includes status field with valid value', async () => {
     const app = buildTestApp();
     const res = await app.request('/support', {
       method: 'POST',
@@ -86,5 +97,24 @@ describe('POST /support', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(['resolved', 'needs_info', 'unknown', 'error']).toContain(body.status);
+  });
+
+  it('returns 500 when diagnosis service returns error status', async () => {
+    const { diagnose } = await import('../src/services/diagnosis.js');
+    vi.mocked(diagnose).mockResolvedValueOnce({
+      status: 'error',
+      message: 'Claude API unavailable',
+      code: 'CLAUDE_ERROR',
+    });
+    const app = buildTestApp();
+    const res = await app.request('/support', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: '/threads', error_code: '503' }),
+    });
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.status).toBe('error');
+    expect(body.code).toBe('CLAUDE_ERROR');
   });
 });

@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { SupportRequestSchema } from '../schemas/request.js';
+import { diagnose } from '../services/diagnosis.js';
 
-export function supportRoute(_docsContext: string): Hono {
+export function supportRoute(docsContext: string): Hono {
   const app = new Hono();
 
   app.post('/', async (c) => {
@@ -23,11 +24,12 @@ export function supportRoute(_docsContext: string): Hono {
       );
     }
 
-    // Stub response — Plan 03 will wire the real Claude diagnosis call
-    return c.json({
-      status: 'unknown',
-      explanation: 'Diagnosis engine not yet connected',
-    });
+    const diagnosis = await diagnose(result.data, docsContext);
+
+    const statusCode =
+      diagnosis.status === 'error' ? 500 : 200;
+
+    return c.json(diagnosis, statusCode);
   });
 
   return app;
