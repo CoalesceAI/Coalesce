@@ -40,7 +40,7 @@ describe.skipIf(!process.env['ANTHROPIC_API_KEY'])(
         const docs = await getDocsContext();
         const start = Date.now();
 
-        const result = await diagnose(
+        const { response: result } = await diagnose(
           {
             endpoint: '/threads',
             error_code: '401',
@@ -66,7 +66,7 @@ describe.skipIf(!process.env['ANTHROPIC_API_KEY'])(
         const docs = await getDocsContext();
         const start = Date.now();
 
-        const result = await diagnose(
+        const { response: result } = await diagnose(
           {
             endpoint: '/quantum-flux',
             error_code: 'FLUX_CAPACITOR',
