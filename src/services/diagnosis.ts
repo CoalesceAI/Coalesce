@@ -2,12 +2,13 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 import type { SupportRequest } from '../schemas/request.js';
-import type { DiagnosisResponse } from '../schemas/response.js';
-
 // ---------------------------------------------------------------------------
 // Internal schema for Claude structured output
 // NOTE: "error" is NOT included — that variant is for Coalesce-side failures,
 //       not Claude responses.
+// NOTE: session_id and turn_number are NOT in DiagnosisOutput — they are added
+//       by the route handler, not Claude. diagnose() returns DiagnosisOutput;
+//       the route assembles the full DiagnosisResponse.
 // ---------------------------------------------------------------------------
 
 const DiagnosisOutputSchema = z.discriminatedUnion('status', [
@@ -16,10 +17,13 @@ const DiagnosisOutputSchema = z.discriminatedUnion('status', [
     diagnosis: z.string(),
     fix: z.string(),
     references: z.array(z.string()),
+    fix_steps: z.array(z.object({ action: z.string(), target: z.string().optional() })),
   }),
   z.object({
     status: z.literal('needs_info'),
     question: z.string(),
+    should_try: z.string().optional(),
+    need_to_clarify: z.array(z.string()).optional(),
   }),
   z.object({
     status: z.literal('unknown'),
@@ -28,6 +32,13 @@ const DiagnosisOutputSchema = z.discriminatedUnion('status', [
 ]);
 
 type DiagnosisOutput = z.infer<typeof DiagnosisOutputSchema>;
+
+// Coalesce-side error shape (Claude API failures) — not in DiagnosisOutputSchema
+// because Claude never returns this; only diagnose() itself can emit it.
+export type DiagnoseError = { status: 'error'; message: string; code: string };
+
+// Public return type of diagnose() — includes Claude output OR a Coalesce error
+export type DiagnoseResult = DiagnosisOutput | DiagnoseError;
 
 // ---------------------------------------------------------------------------
 // System prompt builder
@@ -112,7 +123,7 @@ export async function diagnose(
   request: SupportRequest,
   docsContext: string,
   client?: Pick<Anthropic, 'messages'>
-): Promise<DiagnosisResponse> {
+): Promise<DiagnoseResult> {
   const anthropic = client ?? new Anthropic();
 
   const startTime = Date.now();
