@@ -1,8 +1,17 @@
 import { Hono } from 'hono';
 import { SupportRequestSchema } from '../schemas/request.js';
 import { diagnose } from '../services/diagnosis.js';
+import { buildUserMessage } from '../services/diagnosis.js';
+import {
+  InMemorySessionStore,
+  type Session,
+  type SessionStore,
+} from '../services/session-store.js';
 
-export function supportRoute(docsContext: string): Hono {
+export function supportRoute(
+  docsContext: string,
+  sessionStore: SessionStore = new InMemorySessionStore()
+): Hono {
   const app = new Hono();
 
   app.post('/', async (c) => {
@@ -24,12 +33,90 @@ export function supportRoute(docsContext: string): Hono {
       );
     }
 
-    const diagnosis = await diagnose(result.data, docsContext);
+    const data = result.data;
 
-    const statusCode =
-      diagnosis.status === 'error' ? 500 : 200;
+    // -----------------------------------------------------------------------
+    // Branch: follow-up request (session_id present) vs initial request
+    // -----------------------------------------------------------------------
 
-    return c.json(diagnosis, statusCode);
+    let session: Session;
+    let turnNumber: number;
+    let isFollowUp: boolean;
+
+    if (data.session_id !== undefined) {
+      // ---- Follow-up path ----
+      const existingSession = sessionStore.get(data.session_id);
+      if (existingSession === undefined) {
+        return c.json(
+          { error: 'Session not found', code: 'SESSION_NOT_FOUND' },
+          404
+        );
+      }
+
+      session = existingSession;
+      isFollowUp = true;
+
+      // Turn number: existing completed pairs + 1
+      // At this point, session.turns contains completed pairs from prior turns
+      // Each completed pair = [user, assistant] = 2 entries
+      turnNumber = Math.floor(session.turns.length / 2) + 1;
+    } else {
+      // ---- Initial path ----
+      const id = crypto.randomUUID();
+
+      session = {
+        id,
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
+        turns: [],
+        originalRequest: {
+          endpoint: data.endpoint ?? '',
+          error_code: data.error_code ?? '',
+          request_body: data.request_body as Record<string, unknown> | undefined,
+          context: data.context,
+          tried: data.tried,
+        },
+      };
+
+      sessionStore.set(id, session);
+      turnNumber = 1;
+      isFollowUp = false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Call diagnose with full conversation history (prior turns only)
+    // The current request's message will be built inside diagnose()
+    // -----------------------------------------------------------------------
+
+    const { response: diagnosisResult, assistantContent } = await diagnose(
+      data,
+      docsContext,
+      session.turns
+    );
+
+    // -----------------------------------------------------------------------
+    // Store current user turn + assistant turn in session
+    // user turn = formatted version of what was just sent to Claude
+    // -----------------------------------------------------------------------
+
+    const userContent = buildUserMessage(data, isFollowUp);
+    session.turns.push({ role: 'user', content: userContent });
+    session.turns.push({ role: 'assistant', content: assistantContent });
+    session.lastAccessedAt = Date.now();
+    sessionStore.set(session.id, session);
+
+    // -----------------------------------------------------------------------
+    // Return enriched response with session_id and turn_number
+    // -----------------------------------------------------------------------
+
+    const enriched = {
+      ...diagnosisResult,
+      session_id: session.id,
+      turn_number: turnNumber,
+    };
+
+    const statusCode = diagnosisResult.status === 'error' ? 500 : 200;
+    return c.json(enriched, statusCode);
   });
 
   return app;
