@@ -15,17 +15,22 @@ export function supportRoute(
   const app = new Hono();
 
   app.post('/', async (c) => {
-    let body: unknown;
+    let body: Record<string, unknown> = {};
     try {
-      body = await c.req.json();
+      body = (await c.req.json()) as Record<string, unknown>;
     } catch {
-      return c.json(
-        { error: 'Invalid JSON body', code: 'VALIDATION_ERROR' },
-        400
-      );
+      // Empty or missing body is OK — query params may provide the fields
     }
 
-    const result = SupportRequestSchema.safeParse(body);
+    // Merge URL query params as defaults (support URL encodes error context)
+    const query: Record<string, string> = {};
+    for (const key of ['endpoint', 'error_code', 'context', 'tried']) {
+      const val = c.req.query(key);
+      if (val !== undefined) query[key] = val;
+    }
+    const merged = { ...query, ...body };
+
+    const result = SupportRequestSchema.safeParse(merged);
     if (!result.success) {
       return c.json(
         { error: 'Invalid request', code: 'VALIDATION_ERROR' },
