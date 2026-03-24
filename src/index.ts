@@ -6,7 +6,8 @@ import { healthRoute } from './routes/health.js';
 import { supportRoute } from './routes/support.js';
 import { wsRoute } from './routes/ws.js';
 import { loadDocs } from './services/docs-loader.js';
-import { InMemorySessionStore } from './services/session-store.js';
+import { PostgresSessionStore } from './services/session-store.js';
+import { pool } from './db/pool.js';
 
 const DOCS_DIR =
   process.env['DOCS_DIR'] ?? '../agentmail/agentmail-docs/fern/pages';
@@ -18,7 +19,7 @@ const docsContext = await loadDocs(DOCS_DIR, OPENAPI_PATH);
 console.log(`Docs loaded: ${docsContext.length} chars`);
 
 const ttlMs = Number(process.env['SESSION_TTL_MS'] ?? 60 * 60 * 1000);
-const sessionStore = new InMemorySessionStore(ttlMs);
+const sessionStore = new PostgresSessionStore(pool, ttlMs);
 
 const app = new Hono();
 
