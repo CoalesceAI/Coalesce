@@ -8,7 +8,8 @@
     "build": "tsup src/index.ts --format esm --dts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --reporter=verbose",
-    "migrate": "tsx src/db/migrate.ts"
+    "migrate": "tsx src/db/migrate.ts",
+    "seed": "tsx src/db/seed-agentmail.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.78.0",

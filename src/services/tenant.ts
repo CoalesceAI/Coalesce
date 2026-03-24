@@ -9,7 +9,6 @@ export interface Tenant {
   id: string;
   slug: string;
   name: string;
-  settings: Record<string, unknown>;
   created_at: Date;
   updated_at: Date;
 }
@@ -18,12 +17,10 @@ export interface ApiKey {
   id: string;
   tenant_id: string;
   key_hash: string;
-  prefix: string;
-  label: string | null;
-  permissions: string[];
-  rate_limit: number | null;
+  label: string;
+  active: boolean;
   created_at: Date;
-  revoked_at: Date | null;
+  last_used_at: Date | null;
 }
 
 /** Returned when creating a new API key (only time the raw key is available). */
@@ -33,10 +30,9 @@ export interface ApiKeyCreateResult {
   rawKey: string;
 }
 
-/** Result of a successful key validation: the tenant + matched permissions. */
+/** Result of a successful key validation. */
 export interface ValidatedKey {
   tenant: Tenant;
-  permissions: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -70,13 +66,12 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
 export async function createTenant(
   slug: string,
   name: string,
-  settings: Record<string, unknown> = {},
 ): Promise<Tenant> {
   const result = await query<Tenant>(
-    `INSERT INTO tenants (slug, name, settings)
-     VALUES ($1, $2, $3)
-     RETURNING id, slug, name, settings, created_at, updated_at`,
-    [slug, name, JSON.stringify(settings)],
+    `INSERT INTO tenants (slug, name)
+     VALUES ($1, $2)
+     RETURNING id, slug, name, created_at, updated_at`,
+    [slug, name],
   );
   const tenant = result.rows[0];
   if (!tenant) {
@@ -92,18 +87,16 @@ export async function createTenant(
 export async function createApiKey(
   tenantId: string,
   label?: string,
-  permissions: string[] = ["support"],
-  rateLimit?: number,
 ): Promise<ApiKeyCreateResult> {
   const rawKey = generateRawKey();
   const keyHash = hashKey(rawKey);
   const prefix = rawKey.slice(0, 16);
 
   const result = await query<{ id: string }>(
-    `INSERT INTO api_keys (tenant_id, key_hash, prefix, label, permissions, rate_limit)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO api_keys (tenant_id, key_hash, label)
+     VALUES ($1, $2, $3)
      RETURNING id`,
-    [tenantId, keyHash, prefix, label ?? null, JSON.stringify(permissions), rateLimit ?? null],
+    [tenantId, keyHash, label ?? "default"],
   );
   const row = result.rows[0];
   if (!row) {
@@ -116,21 +109,23 @@ export async function createApiKey(
 export async function validateApiKey(raw: string): Promise<ValidatedKey | null> {
   const keyHash = hashKey(raw);
 
-  const result = await query<ApiKey & { tenant_id: string; tenant_slug: string; tenant_name: string; tenant_settings: Record<string, unknown>; tenant_created_at: Date; tenant_updated_at: Date }>(
+  const result = await query<{
+    tenant_id: string;
+    tenant_slug: string;
+    tenant_name: string;
+    tenant_created_at: Date;
+    tenant_updated_at: Date;
+  }>(
     `SELECT
-       ak.id,
-       ak.tenant_id,
-       ak.permissions,
        t.id   AS tenant_id,
        t.slug AS tenant_slug,
        t.name AS tenant_name,
-       t.settings    AS tenant_settings,
        t.created_at  AS tenant_created_at,
        t.updated_at  AS tenant_updated_at
      FROM api_keys ak
      JOIN tenants t ON t.id = ak.tenant_id
      WHERE ak.key_hash = $1
-       AND ak.revoked_at IS NULL`,
+       AND ak.active = true`,
     [keyHash],
   );
 
@@ -143,15 +138,9 @@ export async function validateApiKey(raw: string): Promise<ValidatedKey | null> 
     id: row.tenant_id,
     slug: row.tenant_slug,
     name: row.tenant_name,
-    settings: row.tenant_settings,
     created_at: row.tenant_created_at,
     updated_at: row.tenant_updated_at,
   };
 
-  // permissions is stored as JSONB; pg driver returns it already parsed
-  const permissions = Array.isArray(row.permissions)
-    ? (row.permissions as string[])
-    : ["support"];
-
-  return { tenant, permissions };
+  return { tenant };
 }
