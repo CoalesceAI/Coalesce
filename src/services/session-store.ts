@@ -26,9 +26,9 @@ export interface Session {
 // ---------------------------------------------------------------------------
 
 export interface SessionStore {
-  get(id: string): Session | undefined;
-  set(id: string, session: Session): void;
-  delete(id: string): void;
+  get(id: string): Promise<Session | undefined>;
+  set(id: string, session: Session): Promise<void>;
+  delete(id: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -55,7 +55,7 @@ export class InMemorySessionStore implements SessionStore {
    * Returns the session if it exists and has not expired.
    * Updates lastAccessedAt on valid retrieval (sliding window TTL).
    */
-  get(id: string): Session | undefined {
+  async get(id: string): Promise<Session | undefined> {
     const session = this.store.get(id);
     if (session === undefined) return undefined;
 
@@ -71,11 +71,11 @@ export class InMemorySessionStore implements SessionStore {
     return session;
   }
 
-  set(id: string, session: Session): void {
+  async set(id: string, session: Session): Promise<void> {
     this.store.set(id, session);
   }
 
-  delete(id: string): void {
+  async delete(id: string): Promise<void> {
     this.store.delete(id);
   }
 
