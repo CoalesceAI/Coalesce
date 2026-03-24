@@ -2,19 +2,23 @@ import { Hono } from 'hono';
 import { SupportRequestSchema } from '../schemas/request.js';
 import { diagnose } from '../services/diagnosis.js';
 import { buildUserMessage } from '../services/diagnosis.js';
-import {
-  InMemorySessionStore,
-  type Session,
-  type SessionStore,
-} from '../services/session-store.js';
+import type { Session, SessionStore } from '../services/session-store.js';
+import type { DocsCache } from '../services/docs-cache.js';
+import type { AuthVariables } from '../middleware/auth.js';
+import { tenantAuth } from '../middleware/auth.js';
 
 export function supportRoute(
-  docsContext: string,
-  sessionStore: SessionStore = new InMemorySessionStore()
+  docsCache: DocsCache,
+  sessionStore: SessionStore,
 ): Hono {
-  const app = new Hono();
+  const app = new Hono<{ Variables: AuthVariables }>();
 
-  app.post('/', async (c) => {
+  app.post('/:tenant', tenantAuth, async (c) => {
+    const tenantId = c.get('tenantId');
+
+    // Load tenant-specific docs from cache
+    const docsContext = await docsCache.get(tenantId);
+
     let body: Record<string, unknown> = {};
     try {
       body = (await c.req.json()) as Record<string, unknown>;
@@ -62,8 +66,6 @@ export function supportRoute(
       isFollowUp = true;
 
       // Turn number: existing completed pairs + 1
-      // At this point, session.turns contains completed pairs from prior turns
-      // Each completed pair = [user, assistant] = 2 entries
       turnNumber = Math.floor(session.turns.length / 2) + 1;
     } else {
       // ---- Initial path ----
@@ -71,6 +73,7 @@ export function supportRoute(
 
       session = {
         id,
+        tenantId,
         createdAt: Date.now(),
         lastAccessedAt: Date.now(),
         turns: [],
@@ -90,7 +93,6 @@ export function supportRoute(
 
     // -----------------------------------------------------------------------
     // Call diagnose with full conversation history (prior turns only)
-    // The current request's message will be built inside diagnose()
     // -----------------------------------------------------------------------
 
     const { response: diagnosisResult, assistantContent } = await diagnose(
@@ -101,7 +103,6 @@ export function supportRoute(
 
     // -----------------------------------------------------------------------
     // Store current user turn + assistant turn in session
-    // user turn = formatted version of what was just sent to Claude
     // -----------------------------------------------------------------------
 
     const userContent = buildUserMessage(data, isFollowUp);
