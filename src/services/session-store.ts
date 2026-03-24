@@ -1,3 +1,5 @@
+import pg from 'pg';
+
 // ---------------------------------------------------------------------------
 // Session types
 // ---------------------------------------------------------------------------
@@ -9,6 +11,7 @@ export interface ConversationTurn {
 
 export interface Session {
   id: string;
+  tenantId?: string;
   createdAt: number;
   lastAccessedAt: number;
   turns: ConversationTurn[];
@@ -97,5 +100,104 @@ export class InMemorySessionStore implements SessionStore {
    */
   destroy(): void {
     clearInterval(this.sweepInterval);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PostgresSessionStore — sessions table backed by Neon Postgres
+// ---------------------------------------------------------------------------
+
+/** Row shape returned from the sessions table. */
+interface SessionRow {
+  id: string;
+  tenant_id: string | null;
+  turns: ConversationTurn[];
+  original_request: Session['originalRequest'];
+  status: string;
+  created_at: Date;
+  last_accessed_at: Date;
+}
+
+export class PostgresSessionStore implements SessionStore {
+  private readonly pool: pg.Pool;
+  private readonly ttlMs: number;
+
+  /**
+   * @param pool  - pg Pool instance (from src/db/pool.ts)
+   * @param ttlMs - Session TTL in milliseconds. Defaults to 1 hour.
+   */
+  constructor(pool: pg.Pool, ttlMs: number = 60 * 60 * 1000) {
+    this.pool = pool;
+    this.ttlMs = ttlMs;
+  }
+
+  /**
+   * Retrieves a session by id. Returns undefined if not found or expired.
+   * Updates last_accessed_at on a valid hit (sliding-window TTL).
+   */
+  async get(id: string): Promise<Session | undefined> {
+    const result = await this.pool.query<SessionRow>(
+      `SELECT id, tenant_id, turns, original_request, status, created_at, last_accessed_at
+       FROM sessions
+       WHERE id = $1`,
+      [id],
+    );
+
+    const row = result.rows[0];
+    if (!row) return undefined;
+
+    // TTL check against last_accessed_at
+    const lastAccessed = row.last_accessed_at.getTime();
+    if (Date.now() - lastAccessed > this.ttlMs) {
+      // Expired — delete lazily
+      await this.delete(id);
+      return undefined;
+    }
+
+    // Refresh last_accessed_at (sliding window)
+    const now = new Date();
+    await this.pool.query(
+      `UPDATE sessions SET last_accessed_at = $1 WHERE id = $2`,
+      [now, id],
+    );
+
+    return {
+      id: row.id,
+      tenantId: row.tenant_id ?? undefined,
+      createdAt: row.created_at.getTime(),
+      lastAccessedAt: now.getTime(),
+      turns: row.turns,
+      originalRequest: row.original_request,
+    };
+  }
+
+  /**
+   * Creates or updates a session. Uses UPSERT to handle both insert and update.
+   */
+  async set(id: string, session: Session): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO sessions (id, tenant_id, turns, original_request, created_at, last_accessed_at)
+       VALUES ($1, $2, $3, $4, to_timestamp($5::double precision / 1000), to_timestamp($6::double precision / 1000))
+       ON CONFLICT (id) DO UPDATE SET
+         tenant_id = EXCLUDED.tenant_id,
+         turns = EXCLUDED.turns,
+         original_request = EXCLUDED.original_request,
+         last_accessed_at = EXCLUDED.last_accessed_at`,
+      [
+        id,
+        session.tenantId ?? null,
+        JSON.stringify(session.turns),
+        JSON.stringify(session.originalRequest),
+        session.createdAt,
+        session.lastAccessedAt,
+      ],
+    );
+  }
+
+  /**
+   * Deletes a session by id.
+   */
+  async delete(id: string): Promise<void> {
+    await this.pool.query(`DELETE FROM sessions WHERE id = $1`, [id]);
   }
 }
