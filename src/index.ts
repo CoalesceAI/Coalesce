@@ -5,21 +5,30 @@ import { Hono } from 'hono';
 import { healthRoute } from './routes/health.js';
 import { supportRoute } from './routes/support.js';
 import { wsRoute } from './routes/ws.js';
-import { loadDocs } from './services/docs-loader.js';
+import { TenantDocsCache } from './services/docs-cache.js';
 import { PostgresSessionStore } from './services/session-store.js';
 import { pool } from './db/pool.js';
+import { runMigrations } from './db/migrate.js';
 
-const DOCS_DIR =
-  process.env['DOCS_DIR'] ?? '../agentmail/agentmail-docs/fern/pages';
-const OPENAPI_PATH =
-  process.env['OPENAPI_PATH'] ?? '../agentmail/agentmail-docs/current-openapi.json';
+// ---------------------------------------------------------------------------
+// Startup: run pending migrations
+// ---------------------------------------------------------------------------
 
-console.log('Loading AgentMail docs...');
-const docsContext = await loadDocs(DOCS_DIR, OPENAPI_PATH);
-console.log(`Docs loaded: ${docsContext.length} chars`);
+console.log('Running database migrations...');
+await runMigrations(pool);
+
+// ---------------------------------------------------------------------------
+// Services
+// ---------------------------------------------------------------------------
+
+const docsCache = new TenantDocsCache();
 
 const ttlMs = Number(process.env['SESSION_TTL_MS'] ?? 60 * 60 * 1000);
 const sessionStore = new PostgresSessionStore(pool, ttlMs);
+
+// ---------------------------------------------------------------------------
+// App
+// ---------------------------------------------------------------------------
 
 const app = new Hono();
 
@@ -27,8 +36,8 @@ const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 app.route('/health', healthRoute);
-app.route('/support', supportRoute(docsContext, sessionStore));
-app.route('/', wsRoute(docsContext, sessionStore, upgradeWebSocket));
+app.route('/support', supportRoute(docsCache, sessionStore));
+app.route('/', wsRoute(docsCache, sessionStore, upgradeWebSocket));
 
 app.onError((err, c) => {
   console.error(err);

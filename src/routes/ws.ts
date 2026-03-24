@@ -45,7 +45,7 @@ export function wsRoute(
   docsCache: DocsCache,
   sessionStore: SessionStore,
   upgradeWebSocket: NodeWebSocket['upgradeWebSocket']
-): Hono {
+): Hono<{ Variables: AuthVariables }> {
   const app = new Hono<{ Variables: AuthVariables }>();
 
   app.get(

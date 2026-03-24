@@ -10,7 +10,7 @@ import { tenantAuth } from '../middleware/auth.js';
 export function supportRoute(
   docsCache: DocsCache,
   sessionStore: SessionStore,
-): Hono {
+): Hono<{ Variables: AuthVariables }> {
   const app = new Hono<{ Variables: AuthVariables }>();
 
   app.post('/:tenant', tenantAuth, async (c) => {
