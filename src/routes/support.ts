@@ -16,6 +16,7 @@ export function supportRoute(
 
   app.post('/:tenant', tenantAuth, async (c) => {
     const tenantId = c.get('tenantId');
+    const tenantName = c.get('tenant').name;
 
     // Load tenant-specific docs from cache
     const docsContext = await docsCache.get(tenantId);
@@ -100,7 +101,9 @@ export function supportRoute(
     const { response: diagnosisResult, assistantContent } = await diagnose(
       data,
       docsContext,
-      session.turns
+      session.turns,
+      undefined,
+      tenantName,
     );
     const latencyMs = Date.now() - t0;
 

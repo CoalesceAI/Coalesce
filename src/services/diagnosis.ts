@@ -56,15 +56,17 @@ export type DiagnoseWrappedResult = {
  * Constructs the system prompt for Claude, embedding the full docs context.
  * Includes anti-hallucination rules and clear status guidance.
  *
- * @param docsContext - Full AgentMail docs loaded at startup
+ * @param docsContext - Full docs loaded at startup
  * @param tried - Optional list of actions already attempted (generates anti-repeat section)
+ * @param tenantName - Optional tenant display name (defaults to 'the API')
  */
-export function buildSystemPrompt(docsContext: string, tried?: string[]): string {
-  let prompt = `You are Coalesce, an AI support agent for AgentMail's API.
+export function buildSystemPrompt(docsContext: string, tried?: string[], tenantName?: string): string {
+  const apiName = tenantName ?? 'the API';
+  let prompt = `You are Coalesce, an AI support agent for ${apiName}.
 
 ## Core Rules
 
-Rule 1: Base ALL diagnoses exclusively on the provided documentation below. Do NOT use training knowledge about AgentMail — only the provided documentation is authoritative.
+Rule 1: Base ALL diagnoses exclusively on the provided documentation below. Do NOT use training knowledge about ${apiName} — only the provided documentation is authoritative.
 
 Rule 2: If the provided documentation does not address the error, you MUST return status "unknown". Do NOT guess, extrapolate, or infer from similar APIs.
 
@@ -103,7 +105,7 @@ Do NOT suggest any of the above steps.
 
   prompt += `
 
-## AgentMail API Documentation
+## ${apiName} Documentation
 
 ${docsContext}`;
 
@@ -147,7 +149,7 @@ export function buildUserMessage(request: SupportRequest, isFollowUp?: boolean):
 
   // Initial request: format the original error report
   const lines: string[] = [
-    "I'm getting an error with the AgentMail API.",
+    "I'm getting an error with the API.",
     `Endpoint: ${request.endpoint}`,
     `Error code: ${request.error_code}`,
   ];
@@ -179,7 +181,8 @@ export async function diagnose(
   request: SupportRequest,
   docsContext: string,
   conversationHistory?: ConversationTurn[],
-  client?: Pick<Anthropic, 'messages'>
+  client?: Pick<Anthropic, 'messages'>,
+  tenantName?: string,
 ): Promise<DiagnoseWrappedResult> {
   const anthropic = client ?? new Anthropic();
   const history = conversationHistory ?? [];
@@ -209,7 +212,7 @@ export async function diagnose(
     const message = await anthropic.messages.parse({
       model: 'claude-sonnet-4-6',
       max_tokens: 2048,
-      system: buildSystemPrompt(docsContext, tried.length > 0 ? tried : undefined),
+      system: buildSystemPrompt(docsContext, tried.length > 0 ? tried : undefined, tenantName),
       messages,
       output_config: {
         format: zodOutputFormat(DiagnosisOutputSchema),

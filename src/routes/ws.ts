@@ -76,6 +76,7 @@ export function wsRoute(
       const connId = crypto.randomUUID();
       // Capture tenantId from auth middleware (set before upgrade)
       const tenantId = (c as Context<{ Variables: AuthVariables }>).get('tenantId');
+      const tenantName = (c as Context<{ Variables: AuthVariables }>).get('tenant').name;
       let isAlive = true;
       let isOpen = false;
 
@@ -175,7 +176,9 @@ export function wsRoute(
           const { response, assistantContent } = await diagnose(
             initialRequest,
             docsContext,
-            []
+            [],
+            undefined,
+            tenantName,
           );
           const latencyMs = Date.now() - t0;
 
@@ -298,7 +301,9 @@ export function wsRoute(
           const { response: diagResult, assistantContent } = await diagnose(
             followUpRequest,
             docsContext,
-            session.turns
+            session.turns,
+            undefined,
+            tenantName,
           );
           const msgLatencyMs = Date.now() - t1;
 
