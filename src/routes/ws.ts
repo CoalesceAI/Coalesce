@@ -141,7 +141,7 @@ export function wsRoute(
               tried,
             },
           };
-          sessionStore.set(session.id, session);
+          await sessionStore.set(session.id, session);
 
           // Store connection state in module-level Map
           connections.set(connId, {
@@ -170,7 +170,7 @@ export function wsRoute(
           session.turns.push({ role: 'user', content: userContent });
           session.turns.push({ role: 'assistant', content: assistantContent });
           session.lastAccessedAt = Date.now();
-          sessionStore.set(session.id, session);
+          await sessionStore.set(session.id, session);
 
           // Guard against client disconnecting during diagnose() call
           if (isOpen) {
@@ -242,7 +242,7 @@ export function wsRoute(
           }
 
           // --- Look up session ---
-          const session = sessionStore.get(state.sessionId);
+          const session = await sessionStore.get(state.sessionId);
           if (!session) {
             if (isOpen) {
               ws.send(
@@ -280,7 +280,7 @@ export function wsRoute(
           session.turns.push({ role: 'user', content: userContent });
           session.turns.push({ role: 'assistant', content: assistantContent });
           session.lastAccessedAt = Date.now();
-          sessionStore.set(session.id, session);
+          await sessionStore.set(session.id, session);
 
           // Guard against disconnection during diagnose() call
           if (isOpen) {

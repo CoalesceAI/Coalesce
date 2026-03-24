@@ -50,7 +50,7 @@ export function supportRoute(
 
     if (data.session_id !== undefined) {
       // ---- Follow-up path ----
-      const existingSession = sessionStore.get(data.session_id);
+      const existingSession = await sessionStore.get(data.session_id);
       if (existingSession === undefined) {
         return c.json(
           { error: 'Session not found', code: 'SESSION_NOT_FOUND' },
@@ -83,7 +83,7 @@ export function supportRoute(
         },
       };
 
-      sessionStore.set(id, session);
+      await sessionStore.set(id, session);
       turnNumber = 1;
       isFollowUp = false;
     }
@@ -108,7 +108,7 @@ export function supportRoute(
     session.turns.push({ role: 'user', content: userContent });
     session.turns.push({ role: 'assistant', content: assistantContent });
     session.lastAccessedAt = Date.now();
-    sessionStore.set(session.id, session);
+    await sessionStore.set(session.id, session);
 
     // -----------------------------------------------------------------------
     // Return enriched response with session_id and turn_number
