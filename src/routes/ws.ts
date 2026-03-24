@@ -7,6 +7,9 @@ import { AnswerSchema } from '../schemas/request.js';
 import type { SupportRequest } from '../schemas/request.js';
 import { diagnose, buildUserMessage } from '../services/diagnosis.js';
 import type { SessionStore, Session } from '../services/session-store.js';
+import type { DocsCache } from '../services/docs-cache.js';
+import type { AuthVariables } from '../middleware/auth.js';
+import { tenantAuth } from '../middleware/auth.js';
 
 // ---------------------------------------------------------------------------
 // Per-connection state interface
@@ -34,20 +37,22 @@ export const connections = new Map<string, ConnectionState>();
 
 // ---------------------------------------------------------------------------
 // wsRoute factory
-// Follows the established supportRoute(docsContext, sessionStore) pattern.
+// Accepts DocsCache for per-tenant doc loading.
 // upgradeWebSocket is injected from createNodeWebSocket in index.ts.
 // ---------------------------------------------------------------------------
 
 export function wsRoute(
-  docsContext: string,
+  docsCache: DocsCache,
   sessionStore: SessionStore,
   upgradeWebSocket: NodeWebSocket['upgradeWebSocket']
 ): Hono {
-  const app = new Hono();
+  const app = new Hono<{ Variables: AuthVariables }>();
 
   app.get(
     '/ws/:tenant',
-    // Middleware layer 1: validate query params BEFORE WebSocket upgrade
+    // Middleware layer 1: tenant auth — validates Bearer token and sets tenantId
+    tenantAuth,
+    // Middleware layer 2: validate query params BEFORE WebSocket upgrade
     async (c: Context, next) => {
       const endpoint = c.req.query('endpoint');
       const errorCode = c.req.query('error_code');
@@ -63,11 +68,13 @@ export function wsRoute(
       }
       await next();
     },
-    // Middleware layer 2: WebSocket upgrade handler
+    // Middleware layer 3: WebSocket upgrade handler
     // IMPORTANT: The callback must NOT be async — it must return WSEvents synchronously.
     // Async work happens inside onOpen/onMessage handlers.
     upgradeWebSocket((c: Context): WSEvents<WebSocket> => {
       const connId = crypto.randomUUID();
+      // Capture tenantId from auth middleware (set before upgrade)
+      const tenantId = (c as Context<{ Variables: AuthVariables }>).get('tenantId');
       let isAlive = true;
       let isOpen = false;
 
@@ -84,6 +91,9 @@ export function wsRoute(
       return {
         onOpen: async (_evt: Event, ws: WSContext<WebSocket>) => {
           isOpen = true;
+
+          // --- Load tenant-specific docs ---
+          const docsContext = await docsCache.get(tenantId);
 
           // --- Heartbeat: 30-second ping/pong to detect dead connections ---
           ws.raw?.on('pong', () => {
@@ -128,9 +138,10 @@ export function wsRoute(
                   .filter(Boolean)
               : undefined;
 
-          // --- Create session ---
+          // --- Create session with tenantId ---
           const session: Session = {
             id: crypto.randomUUID(),
+            tenantId,
             createdAt: Date.now(),
             lastAccessedAt: Date.now(),
             turns: [],
@@ -256,6 +267,9 @@ export function wsRoute(
             }
             return;
           }
+
+          // Load fresh docs for follow-up (cache will serve from memory if warm)
+          const docsContext = await docsCache.get(tenantId);
 
           // Turn number: existing completed pairs + 1
           const turnNumber = Math.floor(session.turns.length / 2) + 1;
