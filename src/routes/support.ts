@@ -6,6 +6,7 @@ import type { Session, SessionStore } from '../services/session-store.js';
 import type { DocsCache } from '../services/docs-cache.js';
 import type { AuthVariables } from '../middleware/auth.js';
 import { tenantAuth } from '../middleware/auth.js';
+import { logUsage } from '../services/usage.js';
 
 export function supportRoute(
   docsCache: DocsCache,
@@ -95,11 +96,21 @@ export function supportRoute(
     // Call diagnose with full conversation history (prior turns only)
     // -----------------------------------------------------------------------
 
+    const t0 = Date.now();
     const { response: diagnosisResult, assistantContent } = await diagnose(
       data,
       docsContext,
       session.turns
     );
+    const latencyMs = Date.now() - t0;
+
+    // Fire-and-forget usage tracking
+    void logUsage({
+      tenantId,
+      sessionId: session.id,
+      eventType: isFollowUp ? 'follow_up' : 'diagnosis',
+      latencyMs,
+    });
 
     // -----------------------------------------------------------------------
     // Store current user turn + assistant turn in session

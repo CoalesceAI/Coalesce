@@ -10,6 +10,7 @@ import type { SessionStore, Session } from '../services/session-store.js';
 import type { DocsCache } from '../services/docs-cache.js';
 import type { AuthVariables } from '../middleware/auth.js';
 import { tenantAuth } from '../middleware/auth.js';
+import { logUsage } from '../services/usage.js';
 
 // ---------------------------------------------------------------------------
 // Per-connection state interface
@@ -170,11 +171,21 @@ export function wsRoute(
             tried,
           };
 
+          const t0 = Date.now();
           const { response, assistantContent } = await diagnose(
             initialRequest,
             docsContext,
             []
           );
+          const latencyMs = Date.now() - t0;
+
+          // Fire-and-forget usage tracking
+          void logUsage({
+            tenantId,
+            sessionId: session.id,
+            eventType: 'ws_connect',
+            latencyMs,
+          });
 
           // Store turns in session
           const userContent = buildUserMessage(initialRequest, false);
@@ -283,11 +294,21 @@ export function wsRoute(
           };
 
           // Call diagnose with session history
+          const t1 = Date.now();
           const { response: diagResult, assistantContent } = await diagnose(
             followUpRequest,
             docsContext,
             session.turns
           );
+          const msgLatencyMs = Date.now() - t1;
+
+          // Fire-and-forget usage tracking
+          void logUsage({
+            tenantId,
+            sessionId: session.id,
+            eventType: 'ws_message',
+            latencyMs: msgLatencyMs,
+          });
 
           // Store turns
           const userContent = buildUserMessage(followUpRequest, true);
