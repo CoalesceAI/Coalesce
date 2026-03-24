@@ -7,7 +7,8 @@
     "start": "node dist/index.js",
     "build": "tsup src/index.ts --format esm --dts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --reporter=verbose"
+    "test": "vitest run --reporter=verbose",
+    "migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.78.0",
