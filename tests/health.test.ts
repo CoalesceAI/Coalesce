@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest';
-import { healthRoute } from '../src/routes/health.js';
+import { describe, it, expect, vi } from 'vitest';
 import { Hono } from 'hono';
+
+// Mock the DB pool before importing healthRoute
+vi.mock('../src/db/pool.js', () => ({
+  query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
+  pool: { on: vi.fn() },
+}));
+
+// Dynamic import after mock is set up
+const { healthRoute } = await import('../src/routes/health.js');
+const { query } = await import('../src/db/pool.js');
+const mockQuery = vi.mocked(query);
 
 // Build a test app that mounts the healthRoute
 function buildTestApp() {
@@ -16,11 +26,21 @@ describe('GET /health', () => {
     expect(res.status).toBe(200);
   });
 
-  it('returns { status: "ok" }', async () => {
+  it('returns { status: "ok" } when DB is connected', async () => {
     const app = buildTestApp();
     const res = await app.request('/health');
     const body = await res.json();
     expect(body.status).toBe('ok');
+    expect(body.database).toBe('connected');
+  });
+
+  it('returns { status: "degraded" } when DB is down', async () => {
+    mockQuery.mockRejectedValueOnce(new Error('connection refused'));
+    const app = buildTestApp();
+    const res = await app.request('/health');
+    const body = await res.json();
+    expect(body.status).toBe('degraded');
+    expect(body.database).toBe('disconnected');
   });
 
   it('returns uptime as a number', async () => {
