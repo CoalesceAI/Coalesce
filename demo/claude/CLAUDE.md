@@ -1,38 +1,40 @@
-# AgentMail Integration Test
+# Agent Task: Send a message using AgentMail
 
-## Task
+You are an AI agent completing a task for a developer. Your job is to send a test message using the AgentMail API.
 
-Send a test message via the AgentMail API to the inbox `demo-inbox`.
+## Your task
 
-- **API base URL:** Use the `AGENTMAIL_BASE_URL` environment variable
-- **Authentication:** `Authorization: Bearer $AGENTMAIL_API_KEY` (key is in your environment)
-- **Send a message:** `POST {AGENTMAIL_BASE_URL}/inboxes/{inbox_id}/messages` with JSON body `{ "subject": "...", "text": "..." }`
+Send a message with subject "Hello from Coalesce" and body "This message was sent by an AI agent that diagnosed its own API error and self-healed." to the inbox `demo-inbox`.
 
-## Error Support
+## AgentMail API
 
-AgentMail API error responses may include a `support` field containing a URL to an automated diagnostic service (Coalesce). If you receive an error with a `support` URL, use it to get help resolving the issue.
+- **Base URL:** stored in `AGENTMAIL_BASE_URL` env var
+- **Auth:** `Authorization: Bearer $AGENTMAIL_API_KEY`
+- **Send a message:** `POST {base}/inboxes/{inbox_id}/messages` with `{ "subject": "...", "text": "..." }`
+- **Create an inbox:** `POST {base}/inboxes` with `{ "username": "..." }`
+- **List inboxes:** `GET {base}/inboxes`
 
-**How the support API works:**
+## When you hit an error
 
-The support URL points to Coalesce, a multi-tenant AI support service. It requires authentication with a Coalesce API key.
+AgentMail API errors include a `support` field — a URL to Coalesce, an AI diagnostic service that can tell you exactly what went wrong and how to fix it.
 
-1. **Initial request:** POST to the support URL with:
-   - Header: `Authorization: Bearer $COALESCE_API_KEY`
-   - Body (optional): `{}` — the URL already encodes error context as query params. You can include `{ "tried": ["things you already attempted"] }` for better diagnosis.
+When you see a `support` URL in an error response:
 
-2. **Follow-up (if status is `needs_info`):** The service may ask clarifying questions. Respond by POSTing to the same base URL (without query params) with:
+1. **POST to the support URL** with header `Authorization: Bearer $COALESCE_API_KEY` and body `{}`. The URL already contains the error context.
+
+2. **If Coalesce asks questions** (`status: "needs_info"`), answer them by POSTing to the same base URL (strip the query params) with:
    ```json
    {
-     "session_id": "<from previous response>",
-     "answer": {
-       "clarifications": {
-         "<the question asked>": "<your answer>"
-       }
-     }
+     "session_id": "<from response>",
+     "answer": { "clarifications": { "<question>": "<your answer>" } }
    }
    ```
    Include the same `Authorization: Bearer $COALESCE_API_KEY` header.
 
-3. **Resolution:** When the service returns `status: "resolved"`, it includes a `diagnosis`, `fix` description, and `fix_steps`. Apply the suggested fix, then retry the original task.
+3. **When resolved** (`status: "resolved"`), apply the `fix_steps` and retry your original task.
 
-Keep conversing with the support service until you get a resolution. Then act on it.
+## Important
+
+- Always try the task first. Only use the support URL when you hit an error.
+- Follow Coalesce's fix steps exactly, then retry.
+- Show your work at each step.
