@@ -1,12 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import pg from "pg";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const MIGRATIONS_DIR = path.resolve(__dirname, "../../migrations");
+const MIGRATIONS_DIR = path.resolve(process.cwd(), "migrations");
 
 async function ensureMigrationsTable(client: pg.PoolClient): Promise<void> {
   await client.query(`
