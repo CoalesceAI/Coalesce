@@ -1,34 +1,34 @@
 import { createMiddleware } from "hono/factory";
-import type { Tenant } from "../services/tenant.js";
-import { validateApiKey } from "../services/tenant.js";
+import type { Organization } from "../services/org.js";
+import { validateApiKey } from "../services/org.js";
 
 // ---------------------------------------------------------------------------
 // Hono variable declarations (available via c.get)
 // ---------------------------------------------------------------------------
 
 export type AuthVariables = {
-  tenant: Tenant;
-  tenantId: string;
+  org: Organization;
+  orgId: string;
 };
 
 // ---------------------------------------------------------------------------
-// Tenant auth middleware
+// Organization auth middleware
 //
 // Expects:
-//   - Route param :tenant  (tenant slug)
+//   - Route param :org  (organization slug)
 //   - Authorization: Bearer <api-key>
 //
 // Sets:
-//   c.var.tenant   — full Tenant object
-//   c.var.tenantId — tenant UUID shortcut
+//   c.var.org    — full Organization object
+//   c.var.orgId  — organization UUID shortcut
 // ---------------------------------------------------------------------------
 
-export const tenantAuth = createMiddleware<{ Variables: AuthVariables }>(
+export const orgAuth = createMiddleware<{ Variables: AuthVariables }>(
   async (c, next) => {
-    // 1. Extract tenant slug from route param
-    const slug = c.req.param("tenant");
+    // 1. Extract organization slug from route param
+    const slug = c.req.param("org");
     if (!slug) {
-      return c.json({ error: "Missing tenant slug", code: "MISSING_TENANT" }, 401);
+      return c.json({ error: "Missing organization slug", code: "MISSING_ORG" }, 401);
     }
 
     // 2. Extract Bearer token
@@ -51,17 +51,17 @@ export const tenantAuth = createMiddleware<{ Variables: AuthVariables }>(
       return c.json({ error: "Invalid or revoked API key", code: "INVALID_KEY" }, 401);
     }
 
-    // 4. Verify the key belongs to the requested tenant
-    if (result.tenant.slug !== slug) {
+    // 4. Verify the key belongs to the requested organization
+    if (result.org.slug !== slug) {
       return c.json(
-        { error: "API key does not belong to this tenant", code: "TENANT_MISMATCH" },
+        { error: "API key does not belong to this organization", code: "ORG_MISMATCH" },
         403,
       );
     }
 
     // 5. Set context variables
-    c.set("tenant", result.tenant);
-    c.set("tenantId", result.tenant.id);
+    c.set("org", result.org);
+    c.set("orgId", result.org.id);
 
     await next();
   },
