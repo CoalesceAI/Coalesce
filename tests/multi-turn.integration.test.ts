@@ -12,31 +12,46 @@
  * 5. Verify concurrent sessions don't interfere
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { Hono } from 'hono';
 import { supportRoute } from '../src/routes/support.js';
-import { loadDocs } from '../src/services/docs-loader.js';
 import { InMemorySessionStore } from '../src/services/session-store.js';
 
 const HAS_KEY = !!process.env['ANTHROPIC_API_KEY'];
+
+// ---------------------------------------------------------------------------
+// Mock the DB pool — return fake doc content rows
+// ---------------------------------------------------------------------------
+
+vi.mock('../src/db/pool.js', () => ({
+  query: vi.fn().mockResolvedValue({
+    rows: [{ content: 'mock docs', title: 'Test' }],
+  }),
+}));
+
+// ---------------------------------------------------------------------------
+// Mock the auth middleware — skip real auth, set org/orgId variables
+// ---------------------------------------------------------------------------
+
+vi.mock('../src/middleware/auth.js', () => {
+  const orgAuth = async (c: any, next: any) => {
+    c.set('org', { id: 'test-org-id', slug: 'test-org', name: 'Test Org' });
+    c.set('orgId', 'test-org-id');
+    await next();
+  };
+  return { orgAuth };
+});
 
 describe.skipIf(!HAS_KEY)(
   'Multi-turn conversation — real Claude API (requires ANTHROPIC_API_KEY)',
   () => {
     let app: Hono;
-    let docsContext: string;
     let store: InMemorySessionStore;
 
     beforeAll(async () => {
-      console.log('Loading AgentMail docs for multi-turn integration tests...');
-      const DOCS_DIR = '../agentmail/agentmail-docs/fern/pages';
-      const OPENAPI_PATH = '../agentmail/agentmail-docs/current-openapi.json';
-      docsContext = await loadDocs(DOCS_DIR, OPENAPI_PATH);
-      console.log(`Docs loaded: ${docsContext.length} chars`);
-
       store = new InMemorySessionStore(3600000); // 1 hour TTL
       app = new Hono();
-      app.route('/support', supportRoute(docsContext, store));
+      app.route('/support', supportRoute(store));
     }, 30000);
 
     afterAll(() => {
@@ -54,7 +69,7 @@ describe.skipIf(!HAS_KEY)(
         console.log('\n--- Turn 1: Sending ambiguous error ---');
         const turn1Start = Date.now();
 
-        const turn1Res = await app.request('/support', {
+        const turn1Res = await app.request('/support/test-org', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -91,7 +106,7 @@ describe.skipIf(!HAS_KEY)(
           console.log('\n--- Turn 2: Sending follow-up with clarifications ---');
           const turn2Start = Date.now();
 
-          const turn2Res = await app.request('/support', {
+          const turn2Res = await app.request('/support/test-org', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -150,7 +165,7 @@ describe.skipIf(!HAS_KEY)(
         console.log('\n--- Forced multi-turn: Step 1 ---');
 
         // Step 1: Create a session with an initial request
-        const res1 = await app.request('/support', {
+        const res1 = await app.request('/support/test-org', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -173,7 +188,7 @@ describe.skipIf(!HAS_KEY)(
         // turn number increment.
         console.log('\n--- Forced multi-turn: Step 2 (follow-up) ---');
 
-        const res2 = await app.request('/support', {
+        const res2 = await app.request('/support/test-org', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -222,7 +237,7 @@ describe.skipIf(!HAS_KEY)(
         // Step 3: One more follow-up to prove 3+ turns work
         console.log('\n--- Forced multi-turn: Step 3 (second follow-up) ---');
 
-        const res3 = await app.request('/support', {
+        const res3 = await app.request('/support/test-org', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -253,7 +268,7 @@ describe.skipIf(!HAS_KEY)(
         // Session A: 401 on /v0/inboxes
         // ------------------------------------------------------------------
         console.log('\n--- Session A: 401 on /v0/inboxes ---');
-        const resA = await app.request('/support', {
+        const resA = await app.request('/support/test-org', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -269,7 +284,7 @@ describe.skipIf(!HAS_KEY)(
         // Session B: 404 on /v0/threads/nonexistent
         // ------------------------------------------------------------------
         console.log('\n--- Session B: 404 on /v0/threads ---');
-        const resB = await app.request('/support', {
+        const resB = await app.request('/support/test-org', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -312,10 +327,10 @@ describe.skipIf(!HAS_KEY)(
         // Create a store with 1ms TTL
         const shortStore = new InMemorySessionStore(1);
         const shortApp = new Hono();
-        shortApp.route('/support', supportRoute(docsContext, shortStore));
+        shortApp.route('/support', supportRoute(shortStore));
 
         // Create a session
-        const res1 = await shortApp.request('/support', {
+        const res1 = await shortApp.request('/support/test-org', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -332,7 +347,7 @@ describe.skipIf(!HAS_KEY)(
         await new Promise((r) => setTimeout(r, 50));
 
         // Follow-up should fail with SESSION_NOT_FOUND
-        const res2 = await shortApp.request('/support', {
+        const res2 = await shortApp.request('/support/test-org', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -354,7 +369,7 @@ describe.skipIf(!HAS_KEY)(
       'tried list prevents Claude from suggesting already-attempted fixes',
       async () => {
         console.log('\n--- Sending error with tried list ---');
-        const res = await app.request('/support', {
+        const res = await app.request('/support/test-org', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

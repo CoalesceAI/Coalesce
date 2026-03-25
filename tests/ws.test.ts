@@ -28,6 +28,29 @@ vi.mock('../src/services/diagnosis.js', async (importOriginal) => {
 });
 
 // ---------------------------------------------------------------------------
+// Mock the DB pool — return fake doc content rows
+// ---------------------------------------------------------------------------
+
+vi.mock('../src/db/pool.js', () => ({
+  query: vi.fn().mockResolvedValue({
+    rows: [{ content: 'mock docs', title: 'Test' }],
+  }),
+}));
+
+// ---------------------------------------------------------------------------
+// Mock the auth middleware — skip real auth, set org/orgId variables
+// ---------------------------------------------------------------------------
+
+vi.mock('../src/middleware/auth.js', () => {
+  const orgAuth = async (c: any, next: any) => {
+    c.set('org', { id: 'test-org-id', slug: 'test-org', name: 'Test Org' });
+    c.set('orgId', 'test-org-id');
+    await next();
+  };
+  return { orgAuth };
+});
+
+// ---------------------------------------------------------------------------
 // Test server setup — mirrors production index.ts pattern
 // ---------------------------------------------------------------------------
 
@@ -44,7 +67,7 @@ beforeAll(async () => {
 
   const app = new Hono();
   const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
-  app.route('/', wsRoute('', store, upgradeWebSocket));
+  app.route('/', wsRoute(store, upgradeWebSocket));
 
   await new Promise<void>((resolve) => {
     testServer = serve({ fetch: app.fetch, port: 0 }, (info) => {
@@ -149,12 +172,12 @@ function nextMessage(ws: WebSocket): Promise<Record<string, unknown>> {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('WebSocket /ws/:tenant', () => {
+describe('WebSocket /ws/:org', () => {
   it(
     'establishes connection and receives initial diagnosis (WS-01, WS-02, WS-03)',
     async () => {
       const { ws, firstMsg } = await connectAndReceiveFirst(
-        '/ws/agentmail?endpoint=/v1/threads&error_code=400'
+        '/ws/test-org?endpoint=/v1/threads&error_code=400'
       );
 
       expect(typeof firstMsg['session_id']).toBe('string');
@@ -169,8 +192,10 @@ describe('WebSocket /ws/:tenant', () => {
           endpoint: '/v1/threads',
           error_code: '400',
         }),
-        '',
-        []
+        expect.any(String),
+        [],
+        undefined,
+        'Test Org',
       );
 
       ws.close();
@@ -182,7 +207,7 @@ describe('WebSocket /ws/:tenant', () => {
     'rejects connection missing endpoint — receives HTTP 400 (WS-01, WS-02)',
     async () => {
       const result = await new Promise<Error>((resolve, reject) => {
-        const ws = new WebSocket(wsUrl('/ws/agentmail?error_code=400'));
+        const ws = new WebSocket(wsUrl('/ws/test-org?error_code=400'));
         testConnections.push(ws);
         ws.on('unexpected-response', (_req, res) => {
           resolve(new Error(`HTTP ${res.statusCode}`));
@@ -198,7 +223,7 @@ describe('WebSocket /ws/:tenant', () => {
     'rejects connection missing error_code — receives HTTP 400 (WS-01, WS-02)',
     async () => {
       const result = await new Promise<Error>((resolve, reject) => {
-        const ws = new WebSocket(wsUrl('/ws/agentmail?endpoint=/v1/threads'));
+        const ws = new WebSocket(wsUrl('/ws/test-org?endpoint=/v1/threads'));
         testConnections.push(ws);
         ws.on('unexpected-response', (_req, res) => {
           resolve(new Error(`HTTP ${res.statusCode}`));
@@ -214,7 +239,7 @@ describe('WebSocket /ws/:tenant', () => {
     'accepts follow-up messages and returns turn_number 2 (WS-04)',
     async () => {
       const { ws, firstMsg } = await connectAndReceiveFirst(
-        '/ws/agentmail?endpoint=/v1/threads&error_code=401'
+        '/ws/test-org?endpoint=/v1/threads&error_code=401'
       );
       const sessionId = firstMsg['session_id'] as string;
       expect(firstMsg['turn_number']).toBe(1);
@@ -256,7 +281,7 @@ describe('WebSocket /ws/:tenant', () => {
     'sends error on invalid JSON (WS-03)',
     async () => {
       const { ws } = await connectAndReceiveFirst(
-        '/ws/agentmail?endpoint=/v1/threads&error_code=500'
+        '/ws/test-org?endpoint=/v1/threads&error_code=500'
       );
 
       ws.send('not json{{');
@@ -274,7 +299,7 @@ describe('WebSocket /ws/:tenant', () => {
     'sends error on invalid answer shape (WS-03)',
     async () => {
       const { ws } = await connectAndReceiveFirst(
-        '/ws/agentmail?endpoint=/v1/threads&error_code=503'
+        '/ws/test-org?endpoint=/v1/threads&error_code=503'
       );
 
       // Send valid JSON with answer.clarifications values that are not strings
@@ -298,7 +323,7 @@ describe('WebSocket /ws/:tenant', () => {
     'cleans up connection state on close (WS-05)',
     async () => {
       const { ws } = await connectAndReceiveFirst(
-        '/ws/agentmail?endpoint=/v1/threads&error_code=429'
+        '/ws/test-org?endpoint=/v1/threads&error_code=429'
       );
 
       const sizeBeforeClose = connections.size;
@@ -323,8 +348,8 @@ describe('WebSocket /ws/:tenant', () => {
     'concurrent connections get independent session_ids (WS-04)',
     async () => {
       const [result1, result2] = await Promise.all([
-        connectAndReceiveFirst('/ws/agentmail?endpoint=/v1/threads&error_code=400'),
-        connectAndReceiveFirst('/ws/agentmail?endpoint=/v1/messages&error_code=403'),
+        connectAndReceiveFirst('/ws/test-org?endpoint=/v1/threads&error_code=400'),
+        connectAndReceiveFirst('/ws/test-org?endpoint=/v1/messages&error_code=403'),
       ]);
 
       const sessionId1 = result1.firstMsg['session_id'] as string;

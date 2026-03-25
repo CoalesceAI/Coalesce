@@ -21,13 +21,36 @@ vi.mock('../src/services/diagnosis.js', async (importOriginal) => {
   };
 });
 
+// ---------------------------------------------------------------------------
+// Mock the DB pool — return fake doc content rows
+// ---------------------------------------------------------------------------
+
+vi.mock('../src/db/pool.js', () => ({
+  query: vi.fn().mockResolvedValue({
+    rows: [{ content: 'mock docs', title: 'Test' }],
+  }),
+}));
+
+// ---------------------------------------------------------------------------
+// Mock the auth middleware — skip real auth, set org/orgId variables
+// ---------------------------------------------------------------------------
+
+vi.mock('../src/middleware/auth.js', () => {
+  const orgAuth = async (c: any, next: any) => {
+    c.set('org', { id: 'test-org-id', slug: 'test-org', name: 'Test Org' });
+    c.set('orgId', 'test-org-id');
+    await next();
+  };
+  return { orgAuth };
+});
+
 // Build a test app with the supportRoute factory
 let store: InMemorySessionStore;
 
 function buildTestApp() {
   store = new InMemorySessionStore();
   const app = new Hono();
-  app.route('/support', supportRoute('', store));
+  app.route('/support', supportRoute(store));
   return app;
 }
 
@@ -38,7 +61,7 @@ afterEach(() => {
 describe('POST /support', () => {
   it('returns 200 with status field for valid request', async () => {
     const app = buildTestApp();
-    const res = await app.request('/support', {
+    const res = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: '/threads', error_code: '404' }),
@@ -50,7 +73,7 @@ describe('POST /support', () => {
 
   it('returns 400 with { error, code } for empty body', async () => {
     const app = buildTestApp();
-    const res = await app.request('/support', {
+    const res = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -64,7 +87,7 @@ describe('POST /support', () => {
 
   it('returns 400 for missing required fields', async () => {
     const app = buildTestApp();
-    const res = await app.request('/support', {
+    const res = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: '/threads' }),
@@ -76,7 +99,7 @@ describe('POST /support', () => {
 
   it('returns 400 for non-JSON content type', async () => {
     const app = buildTestApp();
-    const res = await app.request('/support', {
+    const res = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: 'not json',
@@ -89,7 +112,7 @@ describe('POST /support', () => {
 
   it('returns Content-Type application/json', async () => {
     const app = buildTestApp();
-    const res = await app.request('/support', {
+    const res = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: '/threads', error_code: '404' }),
@@ -99,7 +122,7 @@ describe('POST /support', () => {
 
   it('response includes status field with valid value', async () => {
     const app = buildTestApp();
-    const res = await app.request('/support', {
+    const res = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -125,7 +148,7 @@ describe('POST /support', () => {
       assistantContent: 'Claude API unavailable',
     });
     const app = buildTestApp();
-    const res = await app.request('/support', {
+    const res = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: '/threads', error_code: '503' }),
@@ -144,7 +167,7 @@ describe('POST /support', () => {
 describe('POST /support — session management', () => {
   it('initial request returns response with session_id (string) and turn_number (1)', async () => {
     const app = buildTestApp();
-    const res = await app.request('/support', {
+    const res = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: '/threads', error_code: '401' }),
@@ -171,7 +194,7 @@ describe('POST /support — session management', () => {
     const app = buildTestApp();
 
     // Initial request
-    const res1 = await app.request('/support', {
+    const res1 = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: '/threads', error_code: '401' }),
@@ -189,7 +212,7 @@ describe('POST /support — session management', () => {
     });
 
     // Follow-up request
-    const res2 = await app.request('/support', {
+    const res2 = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -205,7 +228,7 @@ describe('POST /support — session management', () => {
 
   it('follow-up with invalid session_id returns 404 + SESSION_NOT_FOUND', async () => {
     const app = buildTestApp();
-    const res = await app.request('/support', {
+    const res = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -234,10 +257,10 @@ describe('POST /support — session management', () => {
     });
 
     const app = new Hono();
-    app.route('/support', supportRoute('', shortTtlStore));
+    app.route('/support', supportRoute(shortTtlStore));
 
     // Create initial session
-    const res1 = await app.request('/support', {
+    const res1 = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: '/threads', error_code: '401' }),
@@ -249,7 +272,7 @@ describe('POST /support — session management', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Follow-up with expired session
-    const res2 = await app.request('/support', {
+    const res2 = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -273,7 +296,7 @@ describe('POST /support — session management', () => {
       response: { status: 'needs_info', question: 'Question for A?' },
       assistantContent: 'Question for A?',
     });
-    const resA1 = await app.request('/support', {
+    const resA1 = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: '/threads', error_code: '401' }),
@@ -286,7 +309,7 @@ describe('POST /support — session management', () => {
       response: { status: 'needs_info', question: 'Question for B?' },
       assistantContent: 'Question for B?',
     });
-    const resB1 = await app.request('/support', {
+    const resB1 = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ endpoint: '/messages', error_code: '403' }),
@@ -302,7 +325,7 @@ describe('POST /support — session management', () => {
       response: { status: 'unknown', explanation: 'Response for A turn 2' },
       assistantContent: 'Response for A turn 2',
     });
-    const resA2 = await app.request('/support', {
+    const resA2 = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -319,7 +342,7 @@ describe('POST /support — session management', () => {
       response: { status: 'unknown', explanation: 'Response for B turn 2' },
       assistantContent: 'Response for B turn 2',
     });
-    const resB2 = await app.request('/support', {
+    const resB2 = await app.request('/support/test-org', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
