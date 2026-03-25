@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { diagnose, buildSystemPrompt, buildUserMessage } from '../src/services/diagnosis.js';
 import type { SupportRequest } from '../src/schemas/request.js';
-import type { ConversationTurn } from '../src/services/session-store.js';
+import type { ConversationTurn } from '../src/domain/session.js';
 
 // ---------------------------------------------------------------------------
 // Mock Anthropic client factory

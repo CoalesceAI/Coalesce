@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 import type { SupportRequest } from '../schemas/request.js';
-import type { ConversationTurn } from './session-store.js';
+import type { ConversationTurn } from '../domain/session.js';
 
 // ---------------------------------------------------------------------------
 // Internal schema for Claude structured output

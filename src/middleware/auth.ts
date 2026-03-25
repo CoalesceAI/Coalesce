@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
-import type { Organization } from "../services/org.js";
-import { validateApiKey } from "../services/org.js";
+import type { Organization } from "../domain/organization.js";
+import { validateApiKey } from "../repositories/api-keys.js";
 
 // ---------------------------------------------------------------------------
 // Hono variable declarations (available via c.get)

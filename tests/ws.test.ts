@@ -4,7 +4,7 @@ import WebSocket from 'ws';
 import { createNodeWebSocket } from '@hono/node-ws';
 import { serve } from '@hono/node-server';
 import { wsRoute, connections } from '../src/routes/ws.js';
-import { InMemorySessionStore } from '../src/services/session-store.js';
+import { InMemorySessionStore } from '../src/repositories/sessions.js';
 
 // ---------------------------------------------------------------------------
 // Mock the diagnosis service — never call real Claude API in tests

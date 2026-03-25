@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { supportRoute } from '../src/routes/support.js';
-import { InMemorySessionStore } from '../src/services/session-store.js';
+import { InMemorySessionStore } from '../src/repositories/sessions.js';
 import { Hono } from 'hono';
 
 // ---------------------------------------------------------------------------

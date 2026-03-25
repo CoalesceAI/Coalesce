@@ -6,10 +6,11 @@ import type { WebSocket } from 'ws';
 import { AnswerSchema } from '../schemas/request.js';
 import type { SupportRequest } from '../schemas/request.js';
 import { diagnose, buildUserMessage } from '../services/diagnosis.js';
-import type { SessionStore, Session } from '../services/session-store.js';
+import type { SessionStore } from '../repositories/sessions.js';
+import type { Session } from '../domain/session.js';
 import type { AuthVariables } from '../middleware/auth.js';
 import { orgAuth } from '../middleware/auth.js';
-import { query } from '../db/pool.js';
+import { loadOrgDocs } from '../repositories/documents.js';
 
 // ---------------------------------------------------------------------------
 // Per-connection state interface
@@ -34,20 +35,6 @@ const PING_MS = Number(process.env['WS_PING_MS'] ?? 30_000); // 30 seconds
 // ---------------------------------------------------------------------------
 
 export const connections = new Map<string, ConnectionState>();
-
-// ---------------------------------------------------------------------------
-// Helper: load docs for an org directly from DB
-// ---------------------------------------------------------------------------
-
-async function loadOrgDocs(orgId: string): Promise<string> {
-  const result = await query<{ content: string; title: string }>(
-    `SELECT dc.content, dc.title FROM doc_content dc WHERE dc.org_id = $1 ORDER BY dc.created_at`,
-    [orgId],
-  );
-  return result.rows
-    .map((row) => `# ${row.title}\n\n${row.content}`)
-    .join('\n\n---\n\n');
-}
 
 // ---------------------------------------------------------------------------
 // wsRoute factory
@@ -108,7 +95,7 @@ export function wsRoute(
         onOpen: async (_evt: Event, ws: WSContext<WebSocket>) => {
           isOpen = true;
 
-          // --- Load org-specific docs directly from DB ---
+          // --- Load org-specific docs from DB via repository ---
           const docsContext = await loadOrgDocs(orgId);
 
           // --- Heartbeat: 30-second ping/pong to detect dead connections ---

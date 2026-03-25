@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
-import { InMemorySessionStore } from '../src/services/session-store.js';
-import type { Session } from '../src/services/session-store.js';
+import { InMemorySessionStore } from '../src/repositories/sessions.js';
+import type { Session } from '../src/domain/session.js';
 
 function makeSession(overrides?: Partial<Session>): Session {
   const now = Date.now();

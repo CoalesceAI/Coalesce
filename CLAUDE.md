@@ -27,6 +27,17 @@ npm run seed         # Seed AgentMail as first tenant (prints API key)
 ```
 src/
   index.ts              # Server entrypoint — runs migrations, creates services, wires routes
+  domain/               # Pure types, no DB or HTTP imports
+    organization.ts     # Organization interface
+    session.ts          # Session, ConversationTurn interfaces
+    api-key.ts          # ApiKey interface, key generation/hashing (crypto only, no DB)
+    document.ts         # DocSource, DocContent interfaces
+    index.ts            # Re-exports everything for convenient imports
+  repositories/         # Data access layer (imports pool, knows Postgres, not HTTP)
+    organizations.ts    # getOrgBySlug, createOrg (SQL queries)
+    api-keys.ts         # createApiKey (DB insert), validateApiKey (DB lookup + join)
+    sessions.ts         # SessionStore interface, InMemorySessionStore, PostgresSessionStore
+    documents.ts        # loadOrgDocs(orgId): Promise<string> (SELECT + concatenate)
   db/
     pool.ts             # Postgres connection pool (DATABASE_URL)
     migrate.ts          # SQL migration runner with _migrations tracking
@@ -36,12 +47,8 @@ src/
     support.ts          # POST /support/:tenant — multi-turn diagnosis (auth required)
     ws.ts               # GET /ws/:tenant — WebSocket diagnosis (auth required)
   services/
-    tenant.ts           # Tenant CRUD + API key management (clsc_live_* format)
-    docs-cache.ts       # Per-tenant docs loaded from DB with in-memory TTL cache
     docs-loader.ts      # Load + strip MDX + OpenAPI from disk (used by seed script)
     diagnosis.ts        # Claude API call with Zod structured output
-    session-store.ts    # SessionStore interface + InMemorySessionStore + PostgresSessionStore
-    usage.ts            # Fire-and-forget usage event logging
   middleware/
     auth.ts             # Tenant auth middleware — validates API key, resolves tenant
   schemas/

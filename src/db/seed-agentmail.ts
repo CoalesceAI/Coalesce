@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { pool, query } from "./pool.js";
 import { loadDocs } from "../services/docs-loader.js";
-import { createOrg, createApiKey } from "../services/org.js";
+import { createOrg } from "../repositories/organizations.js";
+import { createApiKey } from "../repositories/api-keys.js";
 import { resolve } from "node:path";
 
 const DOCS_DIR =

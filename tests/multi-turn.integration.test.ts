@@ -15,7 +15,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { Hono } from 'hono';
 import { supportRoute } from '../src/routes/support.js';
-import { InMemorySessionStore } from '../src/services/session-store.js';
+import { InMemorySessionStore } from '../src/repositories/sessions.js';
 
 const HAS_KEY = !!process.env['ANTHROPIC_API_KEY'];
 

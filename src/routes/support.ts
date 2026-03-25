@@ -2,10 +2,11 @@ import { Hono } from 'hono';
 import { SupportRequestSchema } from '../schemas/request.js';
 import { diagnose } from '../services/diagnosis.js';
 import { buildUserMessage } from '../services/diagnosis.js';
-import type { Session, SessionStore } from '../services/session-store.js';
+import type { Session } from '../domain/session.js';
+import type { SessionStore } from '../repositories/sessions.js';
 import type { AuthVariables } from '../middleware/auth.js';
 import { orgAuth } from '../middleware/auth.js';
-import { query } from '../db/pool.js';
+import { loadOrgDocs } from '../repositories/documents.js';
 
 export function supportRoute(
   sessionStore: SessionStore,
@@ -16,14 +17,8 @@ export function supportRoute(
     const orgId = c.get('orgId');
     const orgName = c.get('org').name;
 
-    // Load org-specific docs directly from DB
-    const docsResult = await query<{ content: string; title: string }>(
-      `SELECT dc.content, dc.title FROM doc_content dc WHERE dc.org_id = $1 ORDER BY dc.created_at`,
-      [orgId],
-    );
-    const docsContext = docsResult.rows
-      .map((row) => `# ${row.title}\n\n${row.content}`)
-      .join('\n\n---\n\n');
+    // Load org-specific docs from DB via repository
+    const docsContext = await loadOrgDocs(orgId);
 
     // Accept optional customer_id from query params
     const customerId = c.req.query('customer_id');

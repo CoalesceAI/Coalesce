@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 import { healthRoute } from './routes/health.js';
 import { supportRoute } from './routes/support.js';
 import { wsRoute } from './routes/ws.js';
-import { PostgresSessionStore } from './services/session-store.js';
+import { PostgresSessionStore } from './repositories/sessions.js';
 import { pool } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
 
