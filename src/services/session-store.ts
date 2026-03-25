@@ -11,7 +11,8 @@ export interface ConversationTurn {
 
 export interface Session {
   id: string;
-  tenantId?: string;
+  orgId?: string;
+  externalCustomerId?: string;
   createdAt: number;
   lastAccessedAt: number;
   turns: ConversationTurn[];
@@ -110,7 +111,8 @@ export class InMemorySessionStore implements SessionStore {
 /** Row shape returned from the sessions table. */
 interface SessionRow {
   id: string;
-  tenant_id: string | null;
+  org_id: string | null;
+  external_customer_id: string | null;
   turns: ConversationTurn[];
   original_request: Session['originalRequest'];
   status: string;
@@ -137,7 +139,7 @@ export class PostgresSessionStore implements SessionStore {
    */
   async get(id: string): Promise<Session | undefined> {
     const result = await this.pool.query<SessionRow>(
-      `SELECT id, tenant_id, turns, original_request, status, created_at, last_accessed_at
+      `SELECT id, org_id, external_customer_id, turns, original_request, status, created_at, last_accessed_at
        FROM sessions
        WHERE id = $1`,
       [id],
@@ -163,7 +165,8 @@ export class PostgresSessionStore implements SessionStore {
 
     return {
       id: row.id,
-      tenantId: row.tenant_id ?? undefined,
+      orgId: row.org_id ?? undefined,
+      externalCustomerId: row.external_customer_id ?? undefined,
       createdAt: row.created_at.getTime(),
       lastAccessedAt: now.getTime(),
       turns: row.turns,
@@ -176,16 +179,18 @@ export class PostgresSessionStore implements SessionStore {
    */
   async set(id: string, session: Session): Promise<void> {
     await this.pool.query(
-      `INSERT INTO sessions (id, tenant_id, turns, original_request, created_at, last_accessed_at)
-       VALUES ($1, $2, $3, $4, to_timestamp($5::double precision / 1000), to_timestamp($6::double precision / 1000))
+      `INSERT INTO sessions (id, org_id, external_customer_id, turns, original_request, created_at, last_accessed_at)
+       VALUES ($1, $2, $3, $4, $5, to_timestamp($6::double precision / 1000), to_timestamp($7::double precision / 1000))
        ON CONFLICT (id) DO UPDATE SET
-         tenant_id = EXCLUDED.tenant_id,
+         org_id = EXCLUDED.org_id,
+         external_customer_id = EXCLUDED.external_customer_id,
          turns = EXCLUDED.turns,
          original_request = EXCLUDED.original_request,
          last_accessed_at = EXCLUDED.last_accessed_at`,
       [
         id,
-        session.tenantId ?? null,
+        session.orgId ?? null,
+        session.externalCustomerId ?? null,
         JSON.stringify(session.turns),
         JSON.stringify(session.originalRequest),
         session.createdAt,
