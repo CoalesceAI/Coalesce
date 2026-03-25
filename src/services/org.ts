@@ -5,20 +5,22 @@ import { query } from "../db/pool.js";
 // Types
 // ---------------------------------------------------------------------------
 
-export interface Tenant {
+export interface Organization {
   id: string;
   slug: string;
   name: string;
+  settings: Record<string, unknown>;
   created_at: Date;
   updated_at: Date;
 }
 
 export interface ApiKey {
   id: string;
-  tenant_id: string;
+  org_id: string;
   key_hash: string;
   label: string;
-  active: boolean;
+  prefix: string;
+  revoked_at: Date | null;
   created_at: Date;
   last_used_at: Date | null;
 }
@@ -32,7 +34,7 @@ export interface ApiKeyCreateResult {
 
 /** Result of a successful key validation. */
 export interface ValidatedKey {
-  tenant: Tenant;
+  org: Organization;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,34 +52,34 @@ function hashKey(raw: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tenant CRUD
+// Organization CRUD
 // ---------------------------------------------------------------------------
 
-export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
-  const result = await query<Tenant>(
+export async function getOrgBySlug(slug: string): Promise<Organization | null> {
+  const result = await query<Organization>(
     `SELECT id, slug, name, settings, created_at, updated_at
-       FROM tenants
+       FROM organizations
       WHERE slug = $1`,
     [slug],
   );
   return result.rows[0] ?? null;
 }
 
-export async function createTenant(
+export async function createOrg(
   slug: string,
   name: string,
-): Promise<Tenant> {
-  const result = await query<Tenant>(
-    `INSERT INTO tenants (slug, name)
+): Promise<Organization> {
+  const result = await query<Organization>(
+    `INSERT INTO organizations (slug, name)
      VALUES ($1, $2)
-     RETURNING id, slug, name, created_at, updated_at`,
+     RETURNING id, slug, name, settings, created_at, updated_at`,
     [slug, name],
   );
-  const tenant = result.rows[0];
-  if (!tenant) {
-    throw new Error("Failed to create tenant");
+  const org = result.rows[0];
+  if (!org) {
+    throw new Error("Failed to create organization");
   }
-  return tenant;
+  return org;
 }
 
 // ---------------------------------------------------------------------------
@@ -85,7 +87,7 @@ export async function createTenant(
 // ---------------------------------------------------------------------------
 
 export async function createApiKey(
-  tenantId: string,
+  orgId: string,
   label?: string,
 ): Promise<ApiKeyCreateResult> {
   const rawKey = generateRawKey();
@@ -93,10 +95,10 @@ export async function createApiKey(
   const prefix = rawKey.slice(0, 16);
 
   const result = await query<{ id: string }>(
-    `INSERT INTO api_keys (tenant_id, key_hash, label)
-     VALUES ($1, $2, $3)
+    `INSERT INTO api_keys (org_id, key_hash, label, prefix)
+     VALUES ($1, $2, $3, $4)
      RETURNING id`,
-    [tenantId, keyHash, label ?? "default"],
+    [orgId, keyHash, label ?? "default", prefix],
   );
   const row = result.rows[0];
   if (!row) {
@@ -110,22 +112,24 @@ export async function validateApiKey(raw: string): Promise<ValidatedKey | null> 
   const keyHash = hashKey(raw);
 
   const result = await query<{
-    tenant_id: string;
-    tenant_slug: string;
-    tenant_name: string;
-    tenant_created_at: Date;
-    tenant_updated_at: Date;
+    org_id: string;
+    org_slug: string;
+    org_name: string;
+    org_settings: Record<string, unknown>;
+    org_created_at: Date;
+    org_updated_at: Date;
   }>(
     `SELECT
-       t.id   AS tenant_id,
-       t.slug AS tenant_slug,
-       t.name AS tenant_name,
-       t.created_at  AS tenant_created_at,
-       t.updated_at  AS tenant_updated_at
+       o.id   AS org_id,
+       o.slug AS org_slug,
+       o.name AS org_name,
+       o.settings AS org_settings,
+       o.created_at  AS org_created_at,
+       o.updated_at  AS org_updated_at
      FROM api_keys ak
-     JOIN tenants t ON t.id = ak.tenant_id
+     JOIN organizations o ON o.id = ak.org_id
      WHERE ak.key_hash = $1
-       AND ak.active = true`,
+       AND ak.revoked_at IS NULL`,
     [keyHash],
   );
 
@@ -134,13 +138,14 @@ export async function validateApiKey(raw: string): Promise<ValidatedKey | null> 
     return null;
   }
 
-  const tenant: Tenant = {
-    id: row.tenant_id,
-    slug: row.tenant_slug,
-    name: row.tenant_name,
-    created_at: row.tenant_created_at,
-    updated_at: row.tenant_updated_at,
+  const org: Organization = {
+    id: row.org_id,
+    slug: row.org_slug,
+    name: row.org_name,
+    settings: row.org_settings,
+    created_at: row.org_created_at,
+    updated_at: row.org_updated_at,
   };
 
-  return { tenant };
+  return { org };
 }
