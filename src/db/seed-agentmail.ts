@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { pool, query } from "./pool.js";
 import { loadDocs } from "../services/docs-loader.js";
-import { createTenant, createApiKey } from "../services/tenant.js";
+import { createOrg, createApiKey } from "../services/org.js";
 import { resolve } from "node:path";
 
 const DOCS_DIR =
@@ -20,16 +20,16 @@ async function main(): Promise<void> {
   const docsContent = await loadDocs(DOCS_DIR, OPENAPI_PATH);
   console.log(`Loaded ${docsContent.length} chars of documentation.`);
 
-  console.log("Creating tenant: agentmail...");
-  const tenant = await createTenant("agentmail", "AgentMail");
-  console.log(`Tenant created: id=${tenant.id}, slug=${tenant.slug}`);
+  console.log("Creating organization: agentmail...");
+  const org = await createOrg("agentmail", "AgentMail");
+  console.log(`Organization created: id=${org.id}, slug=${org.slug}`);
 
   console.log("Inserting doc_source...");
   const sourceResult = await query<{ id: string }>(
-    `INSERT INTO doc_sources (tenant_id, source_type, source_path, loaded_at)
+    `INSERT INTO doc_sources (org_id, source_type, source_path, loaded_at)
      VALUES ($1, 'raw', $2, now())
      RETURNING id`,
-    [tenant.id, DOCS_DIR],
+    [org.id, DOCS_DIR],
   );
   const sourceId = sourceResult.rows[0]?.id;
   if (!sourceId) {
@@ -39,14 +39,14 @@ async function main(): Promise<void> {
 
   console.log("Inserting doc_content...");
   await query(
-    `INSERT INTO doc_content (tenant_id, source_id, title, content, metadata)
+    `INSERT INTO doc_content (org_id, source_id, title, content, metadata)
      VALUES ($1, $2, $3, $4, '{}')`,
-    [tenant.id, sourceId, "AgentMail Documentation", docsContent],
+    [org.id, sourceId, "AgentMail Documentation", docsContent],
   );
   console.log("doc_content inserted.");
 
   console.log("Creating API key...");
-  const apiKey = await createApiKey(tenant.id, "default");
+  const apiKey = await createApiKey(org.id, "default");
   console.log(`\nAgentMail API key: ${apiKey.rawKey}\n`);
 
   await pool.end();
