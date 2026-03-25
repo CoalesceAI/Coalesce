@@ -1,40 +1,46 @@
 # Agent Task: Send a message using AgentMail
 
-You are an AI agent completing a task for a developer. Your job is to send a test message using the AgentMail API.
+You are an AI agent. Your job is to send a test message using the AgentMail API.
 
-## Your task
+## Task
 
-Send a message with subject "Hello from Coalesce" and body "This message was sent by an AI agent that diagnosed its own API error and self-healed." to the inbox `demo-inbox`.
+Send a message with subject "Hello from Coalesce" and body "This message was sent by an AI agent that self-healed using Coalesce." to the inbox `demo-inbox`.
 
 ## AgentMail API
 
-- **Base URL:** stored in `AGENTMAIL_BASE_URL` env var
+- **Base URL:** `$AGENTMAIL_BASE_URL`
 - **Auth:** `Authorization: Bearer $AGENTMAIL_API_KEY`
-- **Send a message:** `POST {base}/inboxes/{inbox_id}/messages` with `{ "subject": "...", "text": "..." }`
-- **Create an inbox:** `POST {base}/inboxes` with `{ "username": "..." }`
-- **List inboxes:** `GET {base}/inboxes`
 
-## When you hit an error
+## IMPORTANT: Error handling
 
-AgentMail API errors include a `support` field — a URL to Coalesce, an AI diagnostic service that can tell you exactly what went wrong and how to fix it.
+When you hit ANY API error, **immediately** use Coalesce to diagnose it. Do NOT try to figure it out yourself. Do NOT retry with variations. Do NOT guess at endpoints. Go straight to Coalesce.
 
-When you see a `support` URL in an error response:
+**Coalesce endpoint:** `http://localhost:3000/support/agentmail`
+**Auth:** `Authorization: Bearer $COALESCE_API_KEY`
 
-1. **POST to the support URL** with header `Authorization: Bearer $COALESCE_API_KEY` and body `{}`. The URL already contains the error context.
+**Step 1 — Report the error:**
+```
+POST http://localhost:3000/support/agentmail?endpoint={endpoint_you_called}&error_code={http_status}&context={error_name}
+Authorization: Bearer $COALESCE_API_KEY
+Content-Type: application/json
+Body: {}
+```
 
-2. **If Coalesce asks questions** (`status: "needs_info"`), answer them by POSTing to the same base URL (strip the query params) with:
-   ```json
-   {
-     "session_id": "<from response>",
-     "answer": { "clarifications": { "<question>": "<your answer>" } }
-   }
-   ```
-   Include the same `Authorization: Bearer $COALESCE_API_KEY` header.
+**Step 2 — If Coalesce asks questions (`status: "needs_info"`):**
+```
+POST http://localhost:3000/support/agentmail
+Authorization: Bearer $COALESCE_API_KEY
+Content-Type: application/json
+Body: { "session_id": "<from response>", "answer": { "clarifications": { "<question>": "<your answer>" } } }
+```
 
-3. **When resolved** (`status: "resolved"`), apply the `fix_steps` and retry your original task.
+**Step 3 — When resolved (`status: "resolved"`):** Follow the `fix_steps` exactly, then retry.
 
-## Important
+## Flow
 
-- Always try the task first. Only use the support URL when you hit an error.
-- Follow Coalesce's fix steps exactly, then retry.
-- Show your work at each step.
+1. Source the .env file to get credentials
+2. Try to send the message
+3. When it fails → immediately call Coalesce (do NOT debug yourself)
+4. Answer Coalesce's questions
+5. Apply the fix steps
+6. Retry and succeed
