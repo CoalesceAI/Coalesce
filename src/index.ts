@@ -5,7 +5,6 @@ import { Hono } from 'hono';
 import { healthRoute } from './routes/health.js';
 import { supportRoute } from './routes/support.js';
 import { wsRoute } from './routes/ws.js';
-import { TenantDocsCache } from './services/docs-cache.js';
 import { PostgresSessionStore } from './services/session-store.js';
 import { pool } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
@@ -21,8 +20,6 @@ await runMigrations(pool);
 // Services
 // ---------------------------------------------------------------------------
 
-const docsCache = new TenantDocsCache();
-
 const ttlMs = Number(process.env['SESSION_TTL_MS'] ?? 60 * 60 * 1000);
 const sessionStore = new PostgresSessionStore(pool, ttlMs);
 
@@ -36,8 +33,8 @@ const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 app.route('/health', healthRoute);
-app.route('/support', supportRoute(docsCache, sessionStore));
-app.route('/', wsRoute(docsCache, sessionStore, upgradeWebSocket));
+app.route('/support', supportRoute(sessionStore));
+app.route('/', wsRoute(sessionStore, upgradeWebSocket));
 
 app.onError((err, c) => {
   console.error(err);
