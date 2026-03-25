@@ -3,23 +3,30 @@ import { SupportRequestSchema } from '../schemas/request.js';
 import { diagnose } from '../services/diagnosis.js';
 import { buildUserMessage } from '../services/diagnosis.js';
 import type { Session, SessionStore } from '../services/session-store.js';
-import type { DocsCache } from '../services/docs-cache.js';
 import type { AuthVariables } from '../middleware/auth.js';
-import { tenantAuth } from '../middleware/auth.js';
-import { logUsage } from '../services/usage.js';
+import { orgAuth } from '../middleware/auth.js';
+import { query } from '../db/pool.js';
 
 export function supportRoute(
-  docsCache: DocsCache,
   sessionStore: SessionStore,
 ): Hono<{ Variables: AuthVariables }> {
   const app = new Hono<{ Variables: AuthVariables }>();
 
-  app.post('/:tenant', tenantAuth, async (c) => {
-    const tenantId = c.get('tenantId');
-    const tenantName = c.get('tenant').name;
+  app.post('/:org', orgAuth, async (c) => {
+    const orgId = c.get('orgId');
+    const orgName = c.get('org').name;
 
-    // Load tenant-specific docs from cache
-    const docsContext = await docsCache.get(tenantId);
+    // Load org-specific docs directly from DB
+    const docsResult = await query<{ content: string; title: string }>(
+      `SELECT dc.content, dc.title FROM doc_content dc WHERE dc.org_id = $1 ORDER BY dc.created_at`,
+      [orgId],
+    );
+    const docsContext = docsResult.rows
+      .map((row) => `# ${row.title}\n\n${row.content}`)
+      .join('\n\n---\n\n');
+
+    // Accept optional customer_id from query params
+    const customerId = c.req.query('customer_id');
 
     let body: Record<string, unknown> = {};
     try {
@@ -29,12 +36,12 @@ export function supportRoute(
     }
 
     // Merge URL query params as defaults (support URL encodes error context)
-    const query: Record<string, string> = {};
+    const queryParams: Record<string, string> = {};
     for (const key of ['endpoint', 'error_code', 'context', 'tried']) {
       const val = c.req.query(key);
-      if (val !== undefined) query[key] = val;
+      if (val !== undefined) queryParams[key] = val;
     }
-    const merged = { ...query, ...body };
+    const merged = { ...queryParams, ...body };
 
     const result = SupportRequestSchema.safeParse(merged);
     if (!result.success) {
@@ -75,7 +82,8 @@ export function supportRoute(
 
       session = {
         id,
-        tenantId,
+        orgId,
+        externalCustomerId: customerId,
         createdAt: Date.now(),
         lastAccessedAt: Date.now(),
         turns: [],
@@ -97,23 +105,13 @@ export function supportRoute(
     // Call diagnose with full conversation history (prior turns only)
     // -----------------------------------------------------------------------
 
-    const t0 = Date.now();
     const { response: diagnosisResult, assistantContent } = await diagnose(
       data,
       docsContext,
       session.turns,
       undefined,
-      tenantName,
+      orgName,
     );
-    const latencyMs = Date.now() - t0;
-
-    // Fire-and-forget usage tracking
-    void logUsage({
-      tenantId,
-      sessionId: session.id,
-      eventType: isFollowUp ? 'follow_up' : 'diagnosis',
-      latencyMs,
-    });
 
     // -----------------------------------------------------------------------
     // Store current user turn + assistant turn in session
