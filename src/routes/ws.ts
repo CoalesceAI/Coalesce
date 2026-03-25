@@ -7,10 +7,9 @@ import { AnswerSchema } from '../schemas/request.js';
 import type { SupportRequest } from '../schemas/request.js';
 import { diagnose, buildUserMessage } from '../services/diagnosis.js';
 import type { SessionStore, Session } from '../services/session-store.js';
-import type { DocsCache } from '../services/docs-cache.js';
 import type { AuthVariables } from '../middleware/auth.js';
-import { tenantAuth } from '../middleware/auth.js';
-import { logUsage } from '../services/usage.js';
+import { orgAuth } from '../middleware/auth.js';
+import { query } from '../db/pool.js';
 
 // ---------------------------------------------------------------------------
 // Per-connection state interface
@@ -37,22 +36,35 @@ const PING_MS = Number(process.env['WS_PING_MS'] ?? 30_000); // 30 seconds
 export const connections = new Map<string, ConnectionState>();
 
 // ---------------------------------------------------------------------------
+// Helper: load docs for an org directly from DB
+// ---------------------------------------------------------------------------
+
+async function loadOrgDocs(orgId: string): Promise<string> {
+  const result = await query<{ content: string; title: string }>(
+    `SELECT dc.content, dc.title FROM doc_content dc WHERE dc.org_id = $1 ORDER BY dc.created_at`,
+    [orgId],
+  );
+  return result.rows
+    .map((row) => `# ${row.title}\n\n${row.content}`)
+    .join('\n\n---\n\n');
+}
+
+// ---------------------------------------------------------------------------
 // wsRoute factory
-// Accepts DocsCache for per-tenant doc loading.
+// Accepts SessionStore for session persistence.
 // upgradeWebSocket is injected from createNodeWebSocket in index.ts.
 // ---------------------------------------------------------------------------
 
 export function wsRoute(
-  docsCache: DocsCache,
   sessionStore: SessionStore,
   upgradeWebSocket: NodeWebSocket['upgradeWebSocket']
 ): Hono<{ Variables: AuthVariables }> {
   const app = new Hono<{ Variables: AuthVariables }>();
 
   app.get(
-    '/ws/:tenant',
-    // Middleware layer 1: tenant auth — validates Bearer token and sets tenantId
-    tenantAuth,
+    '/ws/:org',
+    // Middleware layer 1: org auth — validates Bearer token and sets orgId
+    orgAuth,
     // Middleware layer 2: validate query params BEFORE WebSocket upgrade
     async (c: Context, next) => {
       const endpoint = c.req.query('endpoint');
@@ -74,9 +86,11 @@ export function wsRoute(
     // Async work happens inside onOpen/onMessage handlers.
     upgradeWebSocket((c: Context): WSEvents<WebSocket> => {
       const connId = crypto.randomUUID();
-      // Capture tenantId from auth middleware (set before upgrade)
-      const tenantId = (c as Context<{ Variables: AuthVariables }>).get('tenantId');
-      const tenantName = (c as Context<{ Variables: AuthVariables }>).get('tenant').name;
+      // Capture orgId from auth middleware (set before upgrade)
+      const orgId = (c as Context<{ Variables: AuthVariables }>).get('orgId');
+      const orgName = (c as Context<{ Variables: AuthVariables }>).get('org').name;
+      // Accept optional customer_id from query params
+      const customerId = c.req.query('customer_id');
       let isAlive = true;
       let isOpen = false;
 
@@ -94,8 +108,8 @@ export function wsRoute(
         onOpen: async (_evt: Event, ws: WSContext<WebSocket>) => {
           isOpen = true;
 
-          // --- Load tenant-specific docs ---
-          const docsContext = await docsCache.get(tenantId);
+          // --- Load org-specific docs directly from DB ---
+          const docsContext = await loadOrgDocs(orgId);
 
           // --- Heartbeat: 30-second ping/pong to detect dead connections ---
           ws.raw?.on('pong', () => {
@@ -140,10 +154,11 @@ export function wsRoute(
                   .filter(Boolean)
               : undefined;
 
-          // --- Create session with tenantId ---
+          // --- Create session with orgId ---
           const session: Session = {
             id: crypto.randomUUID(),
-            tenantId,
+            orgId,
+            externalCustomerId: customerId,
             createdAt: Date.now(),
             lastAccessedAt: Date.now(),
             turns: [],
@@ -172,23 +187,13 @@ export function wsRoute(
             tried,
           };
 
-          const t0 = Date.now();
           const { response, assistantContent } = await diagnose(
             initialRequest,
             docsContext,
             [],
             undefined,
-            tenantName,
+            orgName,
           );
-          const latencyMs = Date.now() - t0;
-
-          // Fire-and-forget usage tracking
-          void logUsage({
-            tenantId,
-            sessionId: session.id,
-            eventType: 'ws_connect',
-            latencyMs,
-          });
 
           // Store turns in session
           const userContent = buildUserMessage(initialRequest, false);
@@ -282,8 +287,8 @@ export function wsRoute(
             return;
           }
 
-          // Load fresh docs for follow-up (cache will serve from memory if warm)
-          const docsContext = await docsCache.get(tenantId);
+          // Load fresh docs for follow-up
+          const docsContext = await loadOrgDocs(orgId);
 
           // Turn number: existing completed pairs + 1
           const turnNumber = Math.floor(session.turns.length / 2) + 1;
@@ -297,23 +302,13 @@ export function wsRoute(
           };
 
           // Call diagnose with session history
-          const t1 = Date.now();
           const { response: diagResult, assistantContent } = await diagnose(
             followUpRequest,
             docsContext,
             session.turns,
             undefined,
-            tenantName,
+            orgName,
           );
-          const msgLatencyMs = Date.now() - t1;
-
-          // Fire-and-forget usage tracking
-          void logUsage({
-            tenantId,
-            sessionId: session.id,
-            eventType: 'ws_message',
-            latencyMs: msgLatencyMs,
-          });
 
           // Store turns
           const userContent = buildUserMessage(followUpRequest, true);
