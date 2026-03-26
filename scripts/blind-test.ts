@@ -21,7 +21,9 @@ API base URL: ${process.env['AGENTMAIL_BASE_URL']}
 API key: ${process.env['AGENTMAIL_API_KEY']}
 Authentication: Bearer token in Authorization header
 
-Try to complete the task. If you hit errors, look at the full error response carefully for any hints on how to resolve them.`;
+To send a message: POST /v0/inboxes/{inbox_id}/messages/send with { "to": "recipient@email.com", "subject": "...", "text": "..." }
+
+Try to complete the task. If you hit errors, read the FULL error response carefully — it may contain helpful information.`;
 
 interface ToolResult {
   type: 'tool_result';
