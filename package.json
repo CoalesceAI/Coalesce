@@ -10,6 +10,7 @@
     "test": "vitest run --reporter=verbose",
     "migrate": "tsx src/db/migrate.ts",
     "seed": "tsx src/db/seed-agentmail.ts",
+    "seed-web": "tsx src/db/seed-from-web.ts",
     "generate-url": "tsx src/db/generate-signed-url.ts"
   },
   "dependencies": {
