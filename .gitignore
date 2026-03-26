@@ -4,3 +4,7 @@ dist
 *.tsbuildinfo
 .DS_Store
 npm-debug.log*
+support-emails.json
+support-knowledge.md
+support-knowledge.json
+support-patterns.md
