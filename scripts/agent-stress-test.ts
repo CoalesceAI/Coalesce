@@ -22,7 +22,7 @@ const DURATION_MIN = Number(process.argv[3] ?? 30);
 const CONCURRENCY = 2; // Haiku calls are cheap but we don't wanna hammer
 const MAX_TURNS_PER_AGENT = 10;
 
-const SYSTEM = `You are an AI agent completing tasks via API calls using curl. When you encounter errors, read the FULL error response carefully — it may contain helpful information including URLs you can call for automated help.`;
+const SYSTEM = `You are an AI agent completing tasks via API calls using curl. Complete the task given to you.`;
 
 // Diverse tasks that will trigger different errors
 const TASKS = [
