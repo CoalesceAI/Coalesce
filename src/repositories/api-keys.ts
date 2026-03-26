@@ -37,6 +37,7 @@ export async function validateApiKey(raw: string): Promise<ValidatedKey | null> 
     org_slug: string;
     org_name: string;
     org_settings: Record<string, unknown>;
+    org_signing_secret: string;
     org_created_at: Date;
     org_updated_at: Date;
   }>(
@@ -45,6 +46,7 @@ export async function validateApiKey(raw: string): Promise<ValidatedKey | null> 
        o.slug AS org_slug,
        o.name AS org_name,
        o.settings AS org_settings,
+       o.signing_secret AS org_signing_secret,
        o.created_at  AS org_created_at,
        o.updated_at  AS org_updated_at
      FROM api_keys ak
@@ -64,6 +66,7 @@ export async function validateApiKey(raw: string): Promise<ValidatedKey | null> 
     slug: row.org_slug,
     name: row.org_name,
     settings: row.org_settings,
+    signing_secret: row.org_signing_secret,
     created_at: row.org_created_at,
     updated_at: row.org_updated_at,
   };

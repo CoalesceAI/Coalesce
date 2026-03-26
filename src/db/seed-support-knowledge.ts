@@ -31,7 +31,7 @@ async function main() {
       "INSERT INTO doc_sources (org_id, source_type, source_path) VALUES ($1, 'raw', 'support-patterns') RETURNING id",
       [orgId]
     );
-    sourceId = source.rows[0].id;
+    sourceId = source.rows[0]!.id;
   }
   console.log('Source ID:', sourceId);
 

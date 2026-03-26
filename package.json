@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --reporter=verbose",
     "migrate": "tsx src/db/migrate.ts",
-    "seed": "tsx src/db/seed-agentmail.ts"
+    "seed": "tsx src/db/seed-agentmail.ts",
+    "generate-url": "tsx src/db/generate-signed-url.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.78.0",

@@ -7,7 +7,7 @@ import type { Organization } from "../domain/organization.js";
 
 export async function getOrgBySlug(slug: string): Promise<Organization | null> {
   const result = await query<Organization>(
-    `SELECT id, slug, name, settings, created_at, updated_at
+    `SELECT id, slug, name, settings, signing_secret, created_at, updated_at
        FROM organizations
       WHERE slug = $1`,
     [slug],
@@ -22,7 +22,7 @@ export async function createOrg(
   const result = await query<Organization>(
     `INSERT INTO organizations (slug, name)
      VALUES ($1, $2)
-     RETURNING id, slug, name, settings, created_at, updated_at`,
+     RETURNING id, slug, name, settings, signing_secret, created_at, updated_at`,
     [slug, name],
   );
   const org = result.rows[0];
