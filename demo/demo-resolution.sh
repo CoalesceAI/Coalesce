@@ -11,7 +11,7 @@ tmux new-session -d -s "$SESSION" -x 220 -y 55 \
 
 # Right pane: Claude Code with the investor demo task
 tmux split-window -h -t "$SESSION" \
-  "cd $COALESCE_DIR/demo/investor && echo '▸ Claude Code — Agent' && echo '' && sleep 2 && claude --verbose"
+  "cd $COALESCE_DIR/demo/investor && sleep 2 && claude"
 
 tmux select-pane -t "$SESSION:0.0" -T "Coalesce Server"
 tmux select-pane -t "$SESSION:0.1" -T "Claude Code Agent"
