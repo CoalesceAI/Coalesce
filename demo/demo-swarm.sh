@@ -10,8 +10,8 @@ curl -s http://localhost:3000/health > /dev/null 2>&1 || {
 }
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Coalesce — 50 agents resolving errors live"
+echo "  Coalesce — 20 agents resolving errors live"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-npx tsx scripts/stress-test.ts 50 30
+npx tsx scripts/stress-test.ts 20 5
