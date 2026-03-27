@@ -165,7 +165,7 @@ async function main() {
     console.log(`  OpenAPI spec: ${openapi.length} chars`);
   }
 
-  console.log('\n✅ Done. Coalesce will use web-crawled docs for diagnosis.');
+  console.log('\n✅ Done. Apoyo will use web-crawled docs for diagnosis.');
   await pool.end();
 }
 

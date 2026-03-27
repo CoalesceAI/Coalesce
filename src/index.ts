@@ -49,7 +49,7 @@ app.onError((err, c) => {
 const port = Number(process.env['PORT'] ?? 3000);
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`Coalesce listening on http://localhost:${info.port}`);
+  console.log(`Apoyo listening on http://localhost:${info.port}`);
 });
 
 // Wire WebSocket upgrade handling to the HTTP server

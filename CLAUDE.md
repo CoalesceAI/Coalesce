@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with the Coalesce API server.
+This file provides guidance to Claude Code when working with the Apoyo API server.
 
-## What Coalesce Is
+## What Apoyo Is
 
 Self-healing support infrastructure for B2A companies. API errors include a support URL. Agents call it, get a structured diagnosis, apply the fix, continue working. Deployed on Railway at `coalesce-production.up.railway.app`.
 
@@ -73,7 +73,7 @@ scripts/
 tests/
 demo/
   claude/              # Claude Code demo (CLAUDE.md + .env)
-  blind-test/          # Blind test (no Coalesce hints)
+  blind-test/          # Blind test (no Apoyo hints)
   run-demo.sh          # tmux split-pane demo launcher
 ```
 
@@ -125,5 +125,5 @@ From blind testing: agents ignore a bare `support` URL field. Adding `support_hi
 
 ## Deployment
 
-- **Coalesce:** Railway at `coalesce-production.up.railway.app`
+- **Apoyo:** Railway at `coalesce-production.up.railway.app`
 - **AgentMail integration:** tanishq stacks (east + west). Error responses include `support` URL + `support_hint`. Always deploy to BOTH stacks. Always `rm -rf dist/ temp/` before deploy to force full rebuild.

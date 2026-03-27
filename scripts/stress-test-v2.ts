@@ -1,8 +1,8 @@
 /**
- * Coalesce Stress Test v2 — Based on Real Support Patterns
+ * Apoyo Stress Test v2 — Based on Real Support Patterns
  *
  * Scenarios derived from 141 real AgentMail support cases.
- * Agents call Coalesce directly with realistic error contexts
+ * Agents call Apoyo directly with realistic error contexts
  * instead of relying on AgentMail's support URL injection.
  *
  * Run: npx tsx scripts/stress-test-v2.ts [num_agents] [duration_minutes]
@@ -12,16 +12,16 @@ import dotenv from 'dotenv';
 dotenv.config();
 dotenv.config({ path: 'demo/claude/.env' });
 
-const COALESCE_URL = 'https://coalesce-production.up.railway.app';
-const COALESCE_KEY = process.env['COALESCE_API_KEY']!;
+const APOYO_URL = 'https://coalesce-production.up.railway.app';
+const APOYO_KEY = process.env['APOYO_API_KEY']!;
 
 const NUM_AGENTS = Number(process.argv[2] ?? 10);
 const DURATION_MIN = Number(process.argv[3] ?? 60);
 const CONCURRENCY = 5;
 const PAUSE_MS = 2000;
 
-if (!COALESCE_KEY) {
-  console.error('COALESCE_API_KEY required in demo/claude/.env');
+if (!APOYO_KEY) {
+  console.error('APOYO_API_KEY required in demo/claude/.env');
   process.exit(1);
 }
 
@@ -168,7 +168,7 @@ const stats = {
   byScenario: new Map<string, { calls: number; resolved: number }>(),
 };
 
-async function callCoalesce(
+async function callApoyo(
   scenario: typeof SCENARIOS[0],
   sessionId?: string,
   answer?: Record<string, string>,
@@ -179,8 +179,8 @@ async function callCoalesce(
 
   try {
     const url = sessionId
-      ? `${COALESCE_URL}/support/agentmail`
-      : `${COALESCE_URL}/support/agentmail?endpoint=${encodeURIComponent(scenario.endpoint)}&error_code=${scenario.error_code}&context=${encodeURIComponent(scenario.context)}`;
+      ? `${APOYO_URL}/support/agentmail`
+      : `${APOYO_URL}/support/agentmail?endpoint=${encodeURIComponent(scenario.endpoint)}&error_code=${scenario.error_code}&context=${encodeURIComponent(scenario.context)}`;
 
     const body = sessionId
       ? { session_id: sessionId, answer: { clarifications: answer } }
@@ -189,7 +189,7 @@ async function callCoalesce(
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${COALESCE_KEY}`,
+        'Authorization': `Bearer ${APOYO_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -223,12 +223,12 @@ async function runAgent(agentId: number): Promise<void> {
   stats.byScenario.get(key)!.calls++;
 
   // Turn 1
-  let result = await callCoalesce(scenario);
+  let result = await callApoyo(scenario);
 
   // Follow-ups (max 2)
   for (let i = 0; i < 2 && result.status === 'needs_info' && result.question; i++) {
     const answer = answerQuestion(result.question, scenario);
-    result = await callCoalesce(scenario, result.sessionId, answer);
+    result = await callApoyo(scenario, result.sessionId, answer);
   }
 
   if (result.status === 'resolved') {
@@ -238,7 +238,7 @@ async function runAgent(agentId: number): Promise<void> {
 
 async function main() {
   console.log(`🔥 Stress Test v2: ${NUM_AGENTS} agents, ${DURATION_MIN} min, ${CONCURRENCY} concurrent`);
-  console.log(`   Coalesce: ${COALESCE_URL}`);
+  console.log(`   Apoyo:    ${APOYO_URL}`);
   console.log(`   Scenarios: ${SCENARIOS.length} unique error types\n`);
 
   const endTime = Date.now() + DURATION_MIN * 60 * 1000;

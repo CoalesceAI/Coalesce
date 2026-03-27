@@ -140,12 +140,12 @@ async function runAgent(agentId: number): Promise<void> {
             }
           }
 
-          // Track: did agent read a reply from Coalesce?
-          if (output.includes('Coalesce') || output.includes('automated support') || output.includes('diagnosis')) {
+          // Track: did agent read a reply from Apoyo?
+          if (output.includes('Apoyo') || output.includes('automated support') || output.includes('diagnosis')) {
             if (!localGotReply) {
               stats.gotReply++;
               localGotReply = true;
-              console.log(`  [Agent ${agentId}] 📖 Got Coalesce reply`);
+              console.log(`  [Agent ${agentId}] 📖 Got Apoyo reply`);
             }
           }
 

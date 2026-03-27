@@ -1,12 +1,12 @@
 #!/bin/bash
-# Coalesce Investor Demo
+# Apoyo Investor Demo
 #
 # Flow: Start swarm → zoom into single resolution → zoom back to swarm counter
 #
 # Left pane: Swarm running (stress test with live counter)
 # Right pane: Single agent resolution (Act 1), then empty while swarm runs
 
-SESSION="coalesce-demo"
+SESSION="apoyo-demo"
 COALESCE_DIR="/Users/tkam/Desktop/Coalesce"
 
 # Kill existing
@@ -14,14 +14,14 @@ tmux kill-session -t "$SESSION" 2>/dev/null
 kill $(lsof -ti:3000) 2>/dev/null
 sleep 1
 
-# Start Coalesce server in background
+# Start Apoyo server in background
 cd "$COALESCE_DIR"
-npm run dev > /tmp/coalesce-server.log 2>&1 &
+npm run dev > /tmp/apoyo-server.log 2>&1 &
 sleep 4
 
 # Left pane: Swarm (starts immediately, runs for 30 min)
 tmux new-session -d -s "$SESSION" -x 220 -y 55 \
-  "cd $COALESCE_DIR && source demo/claude/.env && echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' && echo '  Coalesce — Live Agent Resolution' && echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' && echo '' && npx tsx scripts/stress-test.ts 50 30"
+  "cd $COALESCE_DIR && source demo/claude/.env && echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' && echo '  Apoyo — Live Agent Resolution' && echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' && echo '' && npx tsx scripts/stress-test.ts 50 30"
 
 # Right pane: ready for Act 1
 tmux split-window -h -t "$SESSION" \

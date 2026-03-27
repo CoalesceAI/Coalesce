@@ -6,7 +6,7 @@ import type { ConversationTurn } from '../domain/session.js';
 
 // ---------------------------------------------------------------------------
 // Internal schema for Claude structured output
-// NOTE: "error" is NOT included — that variant is for Coalesce-side failures,
+// NOTE: "error" is NOT included — that variant is for Apoyo-side failures,
 //       not Claude responses.
 // NOTE: session_id and turn_number are NOT in DiagnosisOutput — they are added
 //       by the route handler, not Claude. diagnose() returns DiagnosisOutput;
@@ -35,11 +35,11 @@ const DiagnosisOutputSchema = z.discriminatedUnion('status', [
 
 type DiagnosisOutput = z.infer<typeof DiagnosisOutputSchema>;
 
-// Coalesce-side error shape (Claude API failures) — not in DiagnosisOutputSchema
+// Apoyo-side error shape (Claude API failures) — not in DiagnosisOutputSchema
 // because Claude never returns this; only diagnose() itself can emit it.
 export type DiagnoseError = { status: 'error'; message: string; code: string };
 
-// Public return type of diagnose() — includes Claude output OR a Coalesce error
+// Public return type of diagnose() — includes Claude output OR an Apoyo error
 export type DiagnoseResult = DiagnosisOutput | DiagnoseError;
 
 // Wrapped return type including raw assistant content for session storage
@@ -62,7 +62,7 @@ export type DiagnoseWrappedResult = {
  */
 export function buildSystemPrompt(docsContext: string, tried?: string[], tenantName?: string): string {
   const apiName = tenantName ?? 'the API';
-  let prompt = `You are Coalesce, an AI support agent for ${apiName}.
+  let prompt = `You are Apoyo, an AI support agent for ${apiName}.
 
 ## Core Rules
 

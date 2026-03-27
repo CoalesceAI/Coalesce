@@ -74,7 +74,7 @@ export async function handleIncomingEmail(
         ? [`**References:** ${diagnosis.references.join(', ')}`]
         : []),
       ``,
-      `— Coalesce (automated support)`,
+      `— Apoyo (automated support)`,
     ].join('\n');
   } else if (diagnosis.status === 'needs_info') {
     replyText = [
@@ -90,7 +90,7 @@ export async function handleIncomingEmail(
       ``,
       `Just reply to this email with the details.`,
       ``,
-      `— Coalesce (automated support)`,
+      `— Apoyo (automated support)`,
     ].join('\n');
   } else if (diagnosis.status === 'unknown') {
     replyText = [
@@ -102,7 +102,7 @@ export async function handleIncomingEmail(
       ``,
       `We've flagged this for the team.`,
       ``,
-      `— Coalesce (automated support)`,
+      `— Apoyo (automated support)`,
     ].join('\n');
   } else {
     replyText = [
@@ -110,7 +110,7 @@ export async function handleIncomingEmail(
       ``,
       `We encountered an error processing your support request. The team has been notified.`,
       ``,
-      `— Coalesce (automated support)`,
+      `— Apoyo (automated support)`,
     ].join('\n');
   }
 

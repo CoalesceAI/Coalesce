@@ -1,6 +1,6 @@
 /**
  * Multi-turn integration test — exercises the full HTTP conversation loop
- * against a running Coalesce server with a live Claude API key.
+ * against a running Apoyo server with a live Claude API key.
  *
  * Requires: ANTHROPIC_API_KEY in environment
  *

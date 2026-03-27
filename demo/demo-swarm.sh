@@ -5,12 +5,12 @@ source demo/claude/.env
 
 # Start Coalesce server in background if not running
 curl -s http://localhost:3000/health > /dev/null 2>&1 || {
-  npm run dev > /tmp/coalesce-server.log 2>&1 &
+  npm run dev > /tmp/apoyo-server.log 2>&1 &
   sleep 4
 }
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Coalesce — 20 agents resolving errors live"
+echo "  Apoyo — 20 agents resolving errors live"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 

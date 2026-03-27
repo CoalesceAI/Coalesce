@@ -8,14 +8,14 @@ const DEFAULT_EXPIRY_HOURS = 24 * 365; // 1 year — long-lived for error middle
  * They append &endpoint=...&error_code=... at runtime.
  */
 export function generateSignedBaseUrl(
-  coalesceBaseUrl: string,
+  apoyoBaseUrl: string,
   orgSlug: string,
   signingSecret: string,
   expiryHours: number = DEFAULT_EXPIRY_HOURS,
 ): string {
   const expires = Math.floor(Date.now() / 1000) + expiryHours * 3600;
   const token = sign(orgSlug, expires, signingSecret);
-  return `${coalesceBaseUrl}/support/${orgSlug}?token=${token}&expires=${expires}`;
+  return `${apoyoBaseUrl}/support/${orgSlug}?token=${token}&expires=${expires}`;
 }
 
 /**

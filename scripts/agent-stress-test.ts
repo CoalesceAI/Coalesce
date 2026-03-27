@@ -3,7 +3,7 @@
  *
  * Each agent gets a task, uses the AgentMail API, hits errors,
  * and we track whether they discover and use the support URL.
- * No mention of Coalesce anywhere — pure blind test at scale.
+ * No mention of Apoyo anywhere — pure blind test at scale.
  *
  * Run: npx tsx scripts/agent-stress-test.ts [num_agents] [duration_minutes]
  */
@@ -186,7 +186,7 @@ async function runAgent(agentId: number): Promise<void> {
 async function main() {
   console.log(`🤖 Agent Stress Test: ${NUM_AGENTS} Haiku agents, ${DURATION_MIN} min, ${CONCURRENCY} concurrent`);
   console.log(`   ${TASKS.length} unique task types`);
-  console.log(`   No mention of Coalesce — pure blind test\n`);
+  console.log(`   No mention of Apoyo — pure blind test\n`);
 
   const endTime = Date.now() + DURATION_MIN * 60 * 1000;
   const startTime = Date.now();

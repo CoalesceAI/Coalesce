@@ -4,8 +4,8 @@ dotenv.config({ path: 'demo/claude/.env' }); // Load demo env (has AGENTMAIL key
 
 const AGENTMAIL_BASE_URL = process.env['AGENTMAIL_BASE_URL'] ?? 'https://api.tanishq.amail.dev/v0';
 const AGENTMAIL_API_KEY = process.env['AGENTMAIL_API_KEY']!;
-const COALESCE_URL = 'https://coalesce-production.up.railway.app';
-const COALESCE_API_KEY = process.env['COALESCE_API_KEY']!;
+const APOYO_URL = 'https://coalesce-production.up.railway.app';
+const APOYO_API_KEY = process.env['APOYO_API_KEY']!;
 
 const CONCURRENCY = 10; // agents running at once
 const TOTAL_AGENTS = Number(process.argv[2] ?? 50);
@@ -53,7 +53,7 @@ interface Stats {
   resolved: number;
   needsInfo: number;
   unknown: number;
-  coalesceErrors: number;
+  apoyoErrors: number;
   agentmailErrors: number;
   totalTurns: number;
   totalLatencyMs: number;
@@ -62,7 +62,7 @@ interface Stats {
 
 const stats: Stats = {
   started: 0, completed: 0, errors: 0, resolved: 0,
-  needsInfo: 0, unknown: 0, coalesceErrors: 0,
+  needsInfo: 0, unknown: 0, apoyoErrors: 0,
   agentmailErrors: 0, totalTurns: 0, totalLatencyMs: 0, noSupportUrl: 0,
 };
 
@@ -104,7 +104,7 @@ async function runAgent(agentId: number): Promise<void> {
       return;
     }
 
-    // Step 2: Call Coalesce support URL
+    // Step 2: Call Apoyo support URL
     let sessionId: string | null = null;
     let turns = 0;
     const maxTurns = 3;
@@ -113,21 +113,21 @@ async function runAgent(agentId: number): Promise<void> {
       turns++;
       const start = Date.now();
 
-      let coalesceRes: Response;
+      let apoyoRes: Response;
       if (turns === 1) {
-        coalesceRes = await fetch(supportUrl, {
+        apoyoRes = await fetch(supportUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${COALESCE_API_KEY}`,
+            'Authorization': `Bearer ${APOYO_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({}),
         });
       } else {
-        coalesceRes = await fetch(`${COALESCE_URL}/support/agentmail`, {
+        apoyoRes = await fetch(`${APOYO_URL}/support/agentmail`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${COALESCE_API_KEY}`,
+            'Authorization': `Bearer ${APOYO_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -141,7 +141,7 @@ async function runAgent(agentId: number): Promise<void> {
       stats.totalLatencyMs += latency;
       stats.totalTurns++;
 
-      const diagnosis = await coalesceRes.json() as Record<string, unknown>;
+      const diagnosis = await apoyoRes.json() as Record<string, unknown>;
       sessionId = diagnosis['session_id'] as string;
 
       const status = diagnosis['status'] as string;
@@ -157,7 +157,7 @@ async function runAgent(agentId: number): Promise<void> {
         stats.unknown++;
         break;
       } else if (status === 'error') {
-        stats.coalesceErrors++;
+        stats.apoyoErrors++;
         break;
       } else {
         break;
@@ -175,7 +175,7 @@ async function runAgent(agentId: number): Promise<void> {
 async function main() {
   console.log(`🚀 Load test: ${TOTAL_AGENTS} agents, ${CONCURRENCY} concurrent`);
   console.log(`   AgentMail: ${AGENTMAIL_BASE_URL}`);
-  console.log(`   Coalesce:  ${COALESCE_URL}`);
+  console.log(`   Apoyo:     ${APOYO_URL}`);
   console.log('');
 
   const startTime = Date.now();
@@ -186,7 +186,7 @@ async function main() {
   const statsInterval = setInterval(() => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
     const avgLatency = stats.totalTurns > 0 ? Math.round(stats.totalLatencyMs / stats.totalTurns) : 0;
-    console.log(`  [${elapsed}s] ${stats.completed}/${TOTAL_AGENTS} done | resolved=${stats.resolved} needs_info=${stats.needsInfo} unknown=${stats.unknown} errors=${stats.coalesceErrors} no_url=${stats.noSupportUrl} | avg_latency=${avgLatency}ms`);
+    console.log(`  [${elapsed}s] ${stats.completed}/${TOTAL_AGENTS} done | resolved=${stats.resolved} needs_info=${stats.needsInfo} unknown=${stats.unknown} errors=${stats.apoyoErrors} no_url=${stats.noSupportUrl} | avg_latency=${avgLatency}ms`);
   }, 5000);
 
   // Run agents with concurrency limit
@@ -217,7 +217,7 @@ async function main() {
   console.log(`Resolved:         ${stats.resolved}`);
   console.log(`Needs info:       ${stats.needsInfo} (intermediate)`);
   console.log(`Unknown:          ${stats.unknown}`);
-  console.log(`Coalesce errors:  ${stats.coalesceErrors}`);
+  console.log(`Apoyo errors:     ${stats.apoyoErrors}`);
   console.log(`No support URL:   ${stats.noSupportUrl} (gateway-level errors)`);
   console.log(`Network errors:   ${stats.errors}`);
   console.log(`Resolution rate:  ${((stats.resolved / Math.max(stats.completed - stats.noSupportUrl, 1)) * 100).toFixed(1)}%`);

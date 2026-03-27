@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest'
 
 // Inline implementation of buildSupportUrl — mirrors what will be in agentmail-api/src/utils/support.ts
-// This pure function is tested here (in Coalesce test suite) since agentmail-api has no test framework.
+// This pure function is tested here (in Apoyo test suite) since agentmail-api has no test framework.
 function buildSupportUrl(
-    coalesceUrl: string | undefined,
+    apoyoUrl: string | undefined,
     error: { name: string },
     event: { requestContext: { routeKey: string; http: { method: string } } } | undefined,
     statusCode: number
 ): string | undefined {
-    if (!coalesceUrl || !event) return undefined
+    if (!apoyoUrl || !event) return undefined
 
     const endpoint = event.requestContext.routeKey.replace(/^[A-Z]+ /, '')
     const method = event.requestContext.http.method
@@ -16,11 +16,11 @@ function buildSupportUrl(
     const context = error.name
 
     const params = new URLSearchParams({ endpoint, error_code, method, context })
-    return `${coalesceUrl}/ws/agentmail?${params.toString()}`
+    return `${apoyoUrl}/ws/agentmail?${params.toString()}`
 }
 
 describe('buildSupportUrl', () => {
-    it('Test 1 (AGNT-01): returns a URL string when COALESCE_URL is set', () => {
+    it('Test 1 (AGNT-01): returns a URL string when APOYO_URL is set', () => {
         const result = buildSupportUrl(
             'ws://localhost:3000',
             { name: 'NotFoundError' },
@@ -38,7 +38,7 @@ describe('buildSupportUrl', () => {
         expect(result!.startsWith('ws://localhost:3000/ws/agentmail?')).toBe(true)
     })
 
-    it('Test 2 (AGNT-01): returns undefined when COALESCE_URL is not set', () => {
+    it('Test 2 (AGNT-01): returns undefined when APOYO_URL is not set', () => {
         const result = buildSupportUrl(
             undefined,
             { name: 'NotFoundError' },
@@ -96,7 +96,7 @@ describe('buildSupportUrl', () => {
         expect(result!).toContain('context=NotFoundError')
     })
 
-    it('Test 5 (AGNT-03): returns undefined when COALESCE_URL is absent (feature gate)', () => {
+    it('Test 5 (AGNT-03): returns undefined when APOYO_URL is absent (feature gate)', () => {
         const result = buildSupportUrl(
             undefined,
             { name: 'ValidationError' },

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Act 1: Single agent hits error → Coalesce resolves → agent retries → success
+# Act 1: Single agent hits error → Apoyo resolves → agent retries → success
 # Run this in the right pane while Screen Studio records
 
 source /Users/tkam/Desktop/Coalesce/demo/claude/.env
@@ -26,13 +26,13 @@ SUPPORT_URL=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sy
 sleep 2
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Agent sees support URL → calls Coalesce"
+echo "  Agent sees support URL → calls Apoyo"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "▸ Agent: POST $SUPPORT_URL"
 echo ""
 
-# Step 2: Agent calls Coalesce — gets diagnosis
+# Step 2: Agent calls Apoyo — gets diagnosis
 DIAGNOSIS=$(curl -s -X POST "$SUPPORT_URL" \
   -H "Content-Type: application/json" \
   -d '{}')
@@ -48,7 +48,7 @@ STATUS=$(echo "$DIAGNOSIS" | python3 -c "import sys,json; print(json.load(sys.st
 
 if [ "$STATUS" = "needs_info" ]; then
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "  Coalesce asks a question → Agent answers"
+  echo "  Apoyo asks a question → Agent answers"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
@@ -69,7 +69,7 @@ echo "  Agent applies the fix"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Step 3: Agent creates inbox (following Coalesce's fix_steps)
+# Step 3: Agent creates inbox (following Apoyo's fix_steps)
 echo "▸ Agent: POST /inboxes (creating inbox)"
 CREATE=$(curl -s -X POST "$AGENTMAIL_BASE_URL/inboxes" \
   -H "Authorization: Bearer $AGENTMAIL_API_KEY" \
@@ -87,7 +87,7 @@ echo "▸ Agent: POST /inboxes/$INBOX_ID/messages/send (retry)"
 RETRY=$(curl -s -X POST "$AGENTMAIL_BASE_URL/inboxes/$(python3 -c "import urllib.parse; print(urllib.parse.quote('$INBOX_ID'))")/messages/send" \
   -H "Authorization: Bearer $AGENTMAIL_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"to":"user@example.com","subject":"Hello from Coalesce demo","text":"This message was sent by an agent that self-healed using Coalesce."}')
+  -d '{"to":"user@example.com","subject":"Hello from Apoyo demo","text":"This message was sent by an agent that self-healed using Apoyo."}')
 
 echo "$RETRY" | python3 -m json.tool
 echo ""

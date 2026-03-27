@@ -1,13 +1,13 @@
 /**
- * Coalesce Stress Test — Realistic Agent Traffic
+ * Apoyo Stress Test — Realistic Agent Traffic
  *
  * Simulates N agents that:
  * 1. Create their own inboxes on AgentMail
  * 2. Send emails to each other
  * 3. Read messages, reply, forward
  * 4. Intentionally make mistakes (wrong inbox IDs, missing fields, etc.)
- * 5. Use Coalesce support endpoint whenever they hit errors
- * 6. Apply fixes suggested by Coalesce and retry
+ * 5. Use Apoyo support endpoint whenever they hit errors
+ * 6. Apply fixes suggested by Apoyo and retry
  *
  * Run: npx tsx scripts/stress-test.ts [num_agents] [duration_minutes]
  * Example: npx tsx scripts/stress-test.ts 20 120
@@ -19,8 +19,8 @@ dotenv.config({ path: 'demo/claude/.env' });
 
 const AGENTMAIL_BASE = process.env['AGENTMAIL_BASE_URL'] ?? 'https://api.tanishq.amail.dev/v0';
 const AGENTMAIL_KEY = process.env['AGENTMAIL_API_KEY']!;
-const COALESCE_URL = 'https://coalesce-production.up.railway.app';
-const COALESCE_KEY = process.env['COALESCE_API_KEY']!;
+const APOYO_URL = 'https://coalesce-production.up.railway.app';
+const APOYO_KEY = process.env['APOYO_API_KEY']!;
 
 const NUM_AGENTS = Number(process.argv[2] ?? 10);
 const DURATION_MIN = Number(process.argv[3] ?? 60);
@@ -34,19 +34,19 @@ const PAUSE_BETWEEN_ACTIONS_MS = 2000; // 2s between agent actions
 const stats = {
   agentmailCalls: 0,
   agentmailErrors: 0,
-  coalesceCalls: 0,
-  coalesceResolved: 0,
-  coalesceNeedsInfo: 0,
-  coalesceUnknown: 0,
-  coalesceErrors: 0,
+  apoyoCalls: 0,
+  apoyoResolved: 0,
+  apoyoNeedsInfo: 0,
+  apoyoUnknown: 0,
+  apoyoErrors: 0,
   inboxesCreated: 0,
   messagesSent: 0,
   messagesRead: 0,
   repliesSent: 0,
-  selfHeals: 0, // errors resolved by Coalesce then retried successfully
+  selfHeals: 0, // errors resolved by Apoyo then retried successfully
   networkErrors: 0,
-  totalCoalesceLatencyMs: 0,
-  totalCoalesceTurns: 0,
+  totalApoyoLatencyMs: 0,
+  totalApoyoTurns: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -86,10 +86,10 @@ async function agentmail(method: string, path: string, body?: unknown): Promise<
 }
 
 // ---------------------------------------------------------------------------
-// Coalesce helpers
+// Apoyo helpers
 // ---------------------------------------------------------------------------
 
-interface CoalesceResponse {
+interface ApoyoResponse {
   status: string;
   sessionId?: string;
   question?: string;
@@ -97,8 +97,8 @@ interface CoalesceResponse {
   fixSteps?: Array<{ action: string }>;
 }
 
-async function coalesceSupport(supportUrl: string, sessionId?: string, answer?: Record<string, string>): Promise<CoalesceResponse> {
-  stats.coalesceCalls++;
+async function apoyoSupport(supportUrl: string, sessionId?: string, answer?: Record<string, string>): Promise<ApoyoResponse> {
+  stats.apoyoCalls++;
   const start = Date.now();
 
   try {
@@ -108,17 +108,17 @@ async function coalesceSupport(supportUrl: string, sessionId?: string, answer?: 
       res = await fetch(supportUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${COALESCE_KEY}`,
+          'Authorization': `Bearer ${APOYO_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({}),
       });
     } else {
       // Follow-up
-      res = await fetch(`${COALESCE_URL}/support/agentmail`, {
+      res = await fetch(`${APOYO_URL}/support/agentmail`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${COALESCE_KEY}`,
+          'Authorization': `Bearer ${APOYO_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -129,16 +129,16 @@ async function coalesceSupport(supportUrl: string, sessionId?: string, answer?: 
     }
 
     const latency = Date.now() - start;
-    stats.totalCoalesceLatencyMs += latency;
-    stats.totalCoalesceTurns++;
+    stats.totalApoyoLatencyMs += latency;
+    stats.totalApoyoTurns++;
 
     const body = await res.json() as Record<string, unknown>;
     const status = body['status'] as string;
 
-    if (status === 'resolved') stats.coalesceResolved++;
-    else if (status === 'needs_info') stats.coalesceNeedsInfo++;
-    else if (status === 'unknown') stats.coalesceUnknown++;
-    else stats.coalesceErrors++;
+    if (status === 'resolved') stats.apoyoResolved++;
+    else if (status === 'needs_info') stats.apoyoNeedsInfo++;
+    else if (status === 'unknown') stats.apoyoUnknown++;
+    else stats.apoyoErrors++;
 
     return {
       status,
@@ -149,21 +149,21 @@ async function coalesceSupport(supportUrl: string, sessionId?: string, answer?: 
     };
   } catch (err) {
     stats.networkErrors++;
-    stats.coalesceErrors++;
+    stats.apoyoErrors++;
     return { status: 'error' };
   }
 }
 
-async function resolveWithCoalesce(supportUrl: string, context: string): Promise<CoalesceResponse | null> {
+async function resolveWithApoyo(supportUrl: string, context: string): Promise<ApoyoResponse | null> {
   // Turn 1
-  let result = await coalesceSupport(supportUrl);
+  let result = await apoyoSupport(supportUrl);
 
   // Up to 2 follow-ups
   for (let i = 0; i < 2 && result.status === 'needs_info' && result.question; i++) {
     const answer: Record<string, string> = {
       [result.question.slice(0, 100)]: context,
     };
-    result = await coalesceSupport(supportUrl, result.sessionId, answer);
+    result = await apoyoSupport(supportUrl, result.sessionId, answer);
   }
 
   return result;
@@ -184,12 +184,12 @@ interface Agent {
 
 const AGENT_ACTIONS = [
   'send_to_peer',
-  'send_to_fake_inbox',    // will error — triggers Coalesce
+  'send_to_fake_inbox',    // will error — triggers Apoyo
   'read_messages',
-  'send_missing_fields',   // will error — triggers Coalesce
+  'send_missing_fields',   // will error — triggers Apoyo
   'send_to_self',
   'list_inboxes',
-  'read_nonexistent_thread', // will error — triggers Coalesce
+  'read_nonexistent_thread', // will error — triggers Apoyo
 ] as const;
 
 async function createAgent(id: number): Promise<Agent> {
@@ -227,19 +227,19 @@ async function agentAction(agent: Agent): Promise<void> {
       });
       if (res.status < 400) stats.messagesSent++;
       else if (res.supportUrl) {
-        await resolveWithCoalesce(res.supportUrl, `I tried to send from ${agent.inboxId} to ${to}`);
+        await resolveWithApoyo(res.supportUrl, `I tried to send from ${agent.inboxId} to ${to}`);
       }
       break;
     }
 
     case 'send_to_fake_inbox': {
-      // Intentionally wrong — will trigger Coalesce
+      // Intentionally wrong — will trigger Apoyo
       const fakeInbox = `nonexistent-${Math.random().toString(36).slice(2, 8)}`;
       const res = await agentmail('POST', `/inboxes/${fakeInbox}/messages/send`, {
         to: 'nobody@test.com', subject: 'Test', text: 'This should fail',
       });
       if (res.supportUrl) {
-        const resolution = await resolveWithCoalesce(res.supportUrl,
+        const resolution = await resolveWithApoyo(res.supportUrl,
           `I used inbox ID '${fakeInbox}' which doesn't exist. I didn't create it first.`);
         if (resolution?.status === 'resolved') stats.selfHeals++;
       }
@@ -251,7 +251,7 @@ async function agentAction(agent: Agent): Promise<void> {
       const res = await agentmail('GET', `/inboxes/${encodeURIComponent(agent.inboxId)}/messages`);
       if (res.status < 400) stats.messagesRead++;
       else if (res.supportUrl) {
-        await resolveWithCoalesce(res.supportUrl, `I tried to read messages from ${agent.inboxId}`);
+        await resolveWithApoyo(res.supportUrl, `I tried to read messages from ${agent.inboxId}`);
       }
       break;
     }
@@ -263,7 +263,7 @@ async function agentAction(agent: Agent): Promise<void> {
         subject: 'Missing to field', text: 'test',
       });
       if (res.supportUrl) {
-        await resolveWithCoalesce(res.supportUrl,
+        await resolveWithApoyo(res.supportUrl,
           `I sent a message without the 'to' field. The body was: { subject: 'Missing to field', text: 'test' }`);
       }
       break;
@@ -276,7 +276,7 @@ async function agentAction(agent: Agent): Promise<void> {
       });
       if (res.status < 400) stats.messagesSent++;
       else if (res.supportUrl) {
-        await resolveWithCoalesce(res.supportUrl, `I tried to send a message to myself at ${agent.inboxAddress}`);
+        await resolveWithApoyo(res.supportUrl, `I tried to send a message to myself at ${agent.inboxAddress}`);
       }
       break;
     }
@@ -284,9 +284,9 @@ async function agentAction(agent: Agent): Promise<void> {
     case 'list_inboxes': {
       const res = await agentmail('GET', '/inboxes');
       if (res.status < 400) {
-        // Success — no Coalesce needed
+        // Success — no Apoyo needed
       } else if (res.supportUrl) {
-        await resolveWithCoalesce(res.supportUrl, 'I tried to list all inboxes in my organization');
+        await resolveWithApoyo(res.supportUrl, 'I tried to list all inboxes in my organization');
       }
       break;
     }
@@ -295,7 +295,7 @@ async function agentAction(agent: Agent): Promise<void> {
       const fakeThread = `fake-thread-${Math.random().toString(36).slice(2, 10)}`;
       const res = await agentmail('GET', `/threads/${fakeThread}`);
       if (res.supportUrl) {
-        await resolveWithCoalesce(res.supportUrl, `I tried to read thread '${fakeThread}' which doesn't exist`);
+        await resolveWithApoyo(res.supportUrl, `I tried to read thread '${fakeThread}' which doesn't exist`);
       }
       break;
     }
@@ -309,7 +309,7 @@ async function agentAction(agent: Agent): Promise<void> {
 async function main() {
   console.log(`🔥 Stress Test: ${NUM_AGENTS} agents, ${DURATION_MIN} min, ${CONCURRENCY} concurrent`);
   console.log(`   AgentMail: ${AGENTMAIL_BASE}`);
-  console.log(`   Coalesce:  ${COALESCE_URL}`);
+  console.log(`   Apoyo:     ${APOYO_URL}`);
   console.log('');
 
   const endTime = Date.now() + DURATION_MIN * 60 * 1000;
@@ -335,15 +335,15 @@ async function main() {
   const statsInterval = setInterval(() => {
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     const remaining = Math.max(0, Math.round((endTime - Date.now()) / 1000));
-    const avgLatency = stats.totalCoalesceTurns > 0 ? Math.round(stats.totalCoalesceLatencyMs / stats.totalCoalesceTurns) : 0;
+    const avgLatency = stats.totalApoyoTurns > 0 ? Math.round(stats.totalApoyoLatencyMs / stats.totalApoyoTurns) : 0;
     console.log([
       `[${elapsed}s, ${remaining}s left]`,
       `AM: ${stats.agentmailCalls} calls/${stats.agentmailErrors} errs`,
-      `| Coalesce: ${stats.coalesceCalls} calls`,
-      `resolved=${stats.coalesceResolved}`,
-      `needs_info=${stats.coalesceNeedsInfo}`,
-      `unknown=${stats.coalesceUnknown}`,
-      `err=${stats.coalesceErrors}`,
+      `| Apoyo: ${stats.apoyoCalls} calls`,
+      `resolved=${stats.apoyoResolved}`,
+      `needs_info=${stats.apoyoNeedsInfo}`,
+      `unknown=${stats.apoyoUnknown}`,
+      `err=${stats.apoyoErrors}`,
       `| self_heals=${stats.selfHeals}`,
       `| msgs_sent=${stats.messagesSent}`,
       `| avg_latency=${avgLatency}ms`,
@@ -365,7 +365,7 @@ async function main() {
   clearInterval(statsInterval);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
-  const avgLatency = stats.totalCoalesceTurns > 0 ? Math.round(stats.totalCoalesceLatencyMs / stats.totalCoalesceTurns) : 0;
+  const avgLatency = stats.totalApoyoTurns > 0 ? Math.round(stats.totalApoyoLatencyMs / stats.totalApoyoTurns) : 0;
 
   console.log('\n=== FINAL RESULTS ===');
   console.log(`Duration:            ${elapsed}s`);
@@ -378,16 +378,16 @@ async function main() {
   console.log(`  Messages sent:     ${stats.messagesSent}`);
   console.log(`  Messages read:     ${stats.messagesRead}`);
   console.log('');
-  console.log('Coalesce:');
-  console.log(`  Total calls:       ${stats.coalesceCalls}`);
-  console.log(`  Total turns:       ${stats.totalCoalesceTurns}`);
+  console.log('Apoyo:');
+  console.log(`  Total calls:       ${stats.apoyoCalls}`);
+  console.log(`  Total turns:       ${stats.totalApoyoTurns}`);
   console.log(`  Avg latency:       ${avgLatency}ms`);
-  console.log(`  Resolved:          ${stats.coalesceResolved}`);
-  console.log(`  Needs info:        ${stats.coalesceNeedsInfo}`);
-  console.log(`  Unknown:           ${stats.coalesceUnknown}`);
-  console.log(`  Errors:            ${stats.coalesceErrors}`);
-  console.log(`  Self-heals:        ${stats.selfHeals} (errors fixed by Coalesce + retry)`);
-  console.log(`  Resolution rate:   ${stats.coalesceCalls > 0 ? ((stats.coalesceResolved / stats.coalesceCalls) * 100).toFixed(1) : 0}%`);
+  console.log(`  Resolved:          ${stats.apoyoResolved}`);
+  console.log(`  Needs info:        ${stats.apoyoNeedsInfo}`);
+  console.log(`  Unknown:           ${stats.apoyoUnknown}`);
+  console.log(`  Errors:            ${stats.apoyoErrors}`);
+  console.log(`  Self-heals:        ${stats.selfHeals} (errors fixed by Apoyo + retry)`);
+  console.log(`  Resolution rate:   ${stats.apoyoCalls > 0 ? ((stats.apoyoResolved / stats.apoyoCalls) * 100).toFixed(1) : 0}%`);
   console.log('');
   console.log(`Network errors:      ${stats.networkErrors}`);
 }

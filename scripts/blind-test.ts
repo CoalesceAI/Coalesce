@@ -1,7 +1,7 @@
 /**
  * Blind Test: Does an agent naturally use the support URL?
  *
- * Gives a Haiku agent a task + API credentials. No mention of Coalesce.
+ * Gives a Haiku agent a task + API credentials. No mention of Apoyo.
  * The agent hits AgentMail, gets an error with a support URL, and
  * we watch if it discovers and uses it on its own.
  */
@@ -43,7 +43,7 @@ async function runBash(command: string): Promise<string> {
 
 async function main() {
   console.log('🧪 Blind Test: Will the agent discover the support URL?\n');
-  console.log('System prompt mentions NO support URL, NO Coalesce.');
+  console.log('System prompt mentions NO support URL, NO Apoyo.');
   console.log('The only hint is in the AgentMail error response itself.\n');
   console.log('---\n');
 
