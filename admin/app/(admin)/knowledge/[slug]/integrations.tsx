@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,9 +29,23 @@ interface Integration {
   connected_at: string;
 }
 
+async function readApiErrorMessage(res: Response): Promise<string> {
+  const text = await res.text();
+  try {
+    const j = JSON.parse(text) as { error?: string; message?: string };
+    return j.error ?? j.message ?? text.slice(0, 200);
+  } catch {
+    const t = text.trimStart().toLowerCase();
+    if (t.startsWith("<!doctype") || t.startsWith("<html")) {
+      return "API returned HTML instead of JSON. Set NEXT_PUBLIC_API_URL in admin/.env.local to your Hono API (e.g. http://localhost:3000).";
+    }
+    return text.slice(0, 200) || `Request failed (${res.status})`;
+  }
+}
+
 export function IntegrationsPanel({ slug }: { slug: string }) {
   const router = useRouter();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,19 +58,42 @@ export function IntegrationsPanel({ slug }: { slug: string }) {
   const [loadingPages, setLoadingPages] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
 
-  async function loadIntegrations() {
+  const loadIntegrations = useCallback(async () => {
+    if (!isLoaded) return;
+
     try {
+      if (!isSignedIn) {
+        toast.error("Sign in to load integrations.");
+        return;
+      }
       const token = await getToken();
+      if (!token) {
+        toast.error("Could not get a session token. Try refreshing the page.");
+        return;
+      }
       const res = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/integrations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) setIntegrations(await res.json());
+      if (!res.ok) {
+        let msg = await readApiErrorMessage(res);
+        if (res.status === 401) {
+          msg += " Ensure CLERK_SECRET_KEY matches between the admin app and the API.";
+        }
+        toast.error(msg);
+        return;
+      }
+      setIntegrations(await res.json());
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }
+  }, [slug, getToken, isLoaded, isSignedIn]);
 
-  useEffect(() => { loadIntegrations(); }, [slug]);
+  useEffect(() => {
+    setLoading(true);
+    void loadIntegrations();
+  }, [loadIntegrations]);
 
   const isNotionConnected = integrations.some((i) => i.provider === "notion");
 
