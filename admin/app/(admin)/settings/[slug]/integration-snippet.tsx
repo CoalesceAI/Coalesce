@@ -46,39 +46,39 @@ export function IntegrationSnippet({ slug }: { slug: string }) {
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-sm text-zinc-300">
+        <CardTitle className="text-sm">
           Integration Snippet
         </CardTitle>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-muted-foreground">
           Add these fields to your API error responses so agents can self-heal.
         </p>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="javascript">
-          <TabsList className="bg-zinc-800 border-zinc-700">
-            <TabsTrigger value="javascript" className="text-xs data-[state=active]:bg-zinc-700">
+          <TabsList>
+            <TabsTrigger value="javascript" className="text-xs">
               JavaScript
             </TabsTrigger>
-            <TabsTrigger value="python" className="text-xs data-[state=active]:bg-zinc-700">
+            <TabsTrigger value="python" className="text-xs">
               Python
             </TabsTrigger>
-            <TabsTrigger value="curl" className="text-xs data-[state=active]:bg-zinc-700">
+            <TabsTrigger value="curl" className="text-xs">
               cURL
             </TabsTrigger>
           </TabsList>
           {["javascript", "python", "curl"].map((lang) => (
             <TabsContent key={lang} value={lang} className="mt-3">
               <div className="relative">
-                <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-xs font-mono text-zinc-300 overflow-x-auto">
+                <pre className="bg-muted border border-border rounded-lg p-4 text-xs font-mono text-foreground/80 overflow-x-auto">
                   {snippet(lang, slug)}
                 </pre>
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => copy(lang)}
-                  className="absolute top-2 right-2 text-xs text-zinc-400 hover:text-zinc-100 h-7"
+                  className="absolute top-2 right-2 text-xs text-muted-foreground hover:text-foreground h-7"
                 >
                   {copied === lang ? "Copied!" : "Copy"}
                 </Button>

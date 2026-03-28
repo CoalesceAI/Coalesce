@@ -51,7 +51,7 @@ export function RevokeKeyButton({
 
   return (
     <div className="flex items-center gap-1">
-      <span className="text-xs text-zinc-400">Confirm?</span>
+      <span className="text-xs text-muted-foreground">Confirm?</span>
       <Button
         size="sm"
         variant="ghost"
@@ -65,7 +65,7 @@ export function RevokeKeyButton({
         size="sm"
         variant="ghost"
         onClick={() => setConfirmed(false)}
-        className="text-xs text-zinc-500 hover:text-zinc-300"
+        className="text-xs text-muted-foreground hover:text-foreground"
       >
         No
       </Button>

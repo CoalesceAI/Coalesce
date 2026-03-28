@@ -53,7 +53,7 @@ export function RotateSecretButton({ slug }: { slug: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-zinc-400">This will invalidate all signed URLs.</span>
+      <span className="text-xs text-muted-foreground">This will invalidate all signed URLs.</span>
       <Button
         size="sm"
         variant="ghost"
@@ -67,7 +67,7 @@ export function RotateSecretButton({ slug }: { slug: string }) {
         size="sm"
         variant="ghost"
         onClick={() => setConfirmed(false)}
-        className="text-xs text-zinc-500 hover:text-zinc-300"
+        className="text-xs text-muted-foreground hover:text-foreground"
       >
         Cancel
       </Button>

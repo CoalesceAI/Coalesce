@@ -8,7 +8,7 @@ export default function SessionsLoading() {
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-4 w-20" />
       </div>
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card>
         <CardContent className="space-y-3 pt-6">
           {Array.from({ length: 10 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />

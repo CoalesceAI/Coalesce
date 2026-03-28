@@ -11,7 +11,7 @@ export default function DashboardLoading() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="bg-zinc-900 border-zinc-800">
+          <Card key={i}>
             <CardHeader className="pb-2">
               <Skeleton className="h-3 w-24" />
             </CardHeader>
@@ -24,7 +24,7 @@ export default function DashboardLoading() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <Skeleton className="h-4 w-48" />
           </CardHeader>
@@ -32,7 +32,7 @@ export default function DashboardLoading() {
             <Skeleton className="h-[300px] w-full" />
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card>
           <CardHeader>
             <Skeleton className="h-4 w-36" />
           </CardHeader>
@@ -42,7 +42,7 @@ export default function DashboardLoading() {
         </Card>
       </div>
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card>
         <CardHeader>
           <Skeleton className="h-4 w-32" />
         </CardHeader>

@@ -28,12 +28,12 @@ export function RefreshButton({ intervalMs = 30000 }: { intervalMs?: number }) {
       >
         {isPending ? "Refreshing..." : "Refresh"}
       </Button>
-      <label className="flex items-center gap-1.5 text-xs text-zinc-500 cursor-pointer select-none">
+      <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
         <input
           type="checkbox"
           checked={auto}
           onChange={(e) => setAuto(e.target.checked)}
-          className="rounded border-zinc-700 bg-zinc-800 text-blue-500 focus:ring-blue-500/20"
+          className="rounded border-border bg-background accent-primary"
         />
         Auto
       </label>

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -19,12 +20,19 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en" className={inter.variable}>
-        <body className="font-sans antialiased bg-zinc-950 text-zinc-100">
-          <TooltipProvider>
-            {children}
-            <Toaster theme="dark" />
-          </TooltipProvider>
+      <html lang="en" className={inter.variable} suppressHydrationWarning>
+        <body className="font-sans antialiased">
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TooltipProvider>
+              {children}
+              <Toaster theme="system" richColors />
+            </TooltipProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

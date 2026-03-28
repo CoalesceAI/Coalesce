@@ -51,7 +51,7 @@ export function ActivityFeed() {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-8 bg-zinc-800 rounded animate-pulse" />
+          <div key={i} className="h-8 bg-muted rounded-md animate-pulse" />
         ))}
       </div>
     );
@@ -59,7 +59,7 @@ export function ActivityFeed() {
 
   if (events.length === 0) {
     return (
-      <p className="text-zinc-500 text-sm text-center py-4">
+      <p className="text-muted-foreground text-sm text-center py-4">
         No activity yet. Events will appear here as they occur.
       </p>
     );
@@ -68,13 +68,13 @@ export function ActivityFeed() {
   return (
     <div className="space-y-2 max-h-96 overflow-auto">
       {events.map((event) => (
-        <div key={event.id} className="flex items-start gap-3 py-2 border-b border-zinc-800/50 last:border-0">
-          <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-zinc-600 shrink-0" />
+        <div key={event.id} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+          <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-primary/50 shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-zinc-300">
+            <p className="text-xs text-foreground">
               {ACTION_LABELS[event.action] ?? event.action}
             </p>
-            <p className="text-[10px] text-zinc-600 mt-0.5">
+            <p className="text-[10px] text-muted-foreground mt-0.5">
               {event.actor} &middot; {new Date(event.created_at).toLocaleString()}
             </p>
           </div>

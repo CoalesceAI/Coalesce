@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddUrlForm } from "./add-url-form";
@@ -28,12 +29,12 @@ interface DocSource {
   content_count: number;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  ready: "bg-green-500/20 text-green-400 border-green-500/30",
-  crawling: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  processing: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  pending: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
-  error: "bg-red-500/20 text-red-400 border-red-500/30",
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+  ready: "default",
+  crawling: "outline",
+  processing: "outline",
+  pending: "secondary",
+  error: "destructive",
 };
 
 const TYPE_ICONS: Record<string, string> = {
@@ -66,64 +67,61 @@ export default async function KnowledgeOrgPage({
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-3">
-        <Link href="/knowledge" className="text-zinc-500 hover:text-zinc-300 text-sm">
+        <Link href="/knowledge" className="text-muted-foreground hover:text-foreground text-sm">
           &larr; Knowledge Base
         </Link>
       </div>
 
-      <h1 className="text-2xl font-semibold text-zinc-100">
+      <h1 className="text-2xl font-semibold tracking-tight">
         {slug} &mdash; Knowledge Base
       </h1>
 
-      {/* Doc sources table */}
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-sm text-zinc-300">
+          <CardTitle className="text-sm">
             Doc Sources ({docs.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
-                <TableHead className="text-zinc-400">Source</TableHead>
-                <TableHead className="text-zinc-400">Type</TableHead>
-                <TableHead className="text-zinc-400">Status</TableHead>
-                <TableHead className="text-zinc-400">Chunks</TableHead>
-                <TableHead className="text-zinc-400">Last Synced</TableHead>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Source</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Chunks</TableHead>
+                <TableHead>Last Synced</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {docs.map((doc) => (
-                <TableRow key={doc.id} className="border-zinc-800 hover:bg-zinc-800/50">
-                  <TableCell className="text-xs text-zinc-300 max-w-xs">
+                <TableRow key={doc.id}>
+                  <TableCell className="text-xs max-w-xs">
                     <div className="truncate" title={doc.source_path}>
                       {doc.title ?? doc.source_path}
                     </div>
                     {doc.title && doc.title !== doc.source_path && (
-                      <div className="text-zinc-600 truncate text-[10px]">{doc.source_path}</div>
+                      <div className="text-muted-foreground/60 truncate text-[10px]">{doc.source_path}</div>
                     )}
                     {doc.error_message && (
-                      <p className="text-red-400 mt-0.5 text-xs truncate">{doc.error_message}</p>
+                      <p className="text-destructive mt-0.5 text-xs truncate">{doc.error_message}</p>
                     )}
                   </TableCell>
                   <TableCell>
-                    <span className="text-xs px-2 py-0.5 rounded border bg-zinc-800 text-zinc-400 border-zinc-700">
+                    <Badge variant="secondary" className="text-xs">
                       {TYPE_ICONS[doc.source_type] ?? ""} {doc.source_type}
-                    </span>
+                    </Badge>
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded border ${STATUS_COLORS[doc.status] ?? "bg-zinc-800 text-zinc-400 border-zinc-700"}`}
-                    >
+                    <Badge variant={STATUS_VARIANT[doc.status] ?? "secondary"} className="text-xs">
                       {doc.status}
-                    </span>
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-zinc-400">
+                  <TableCell className="text-xs text-muted-foreground">
                     {doc.content_count}
                   </TableCell>
-                  <TableCell className="text-xs text-zinc-500">
+                  <TableCell className="text-xs text-muted-foreground">
                     {doc.last_sync_at
                       ? new Date(doc.last_sync_at).toLocaleString()
                       : "\u2014"}
@@ -144,7 +142,7 @@ export default async function KnowledgeOrgPage({
               ))}
               {docs.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-zinc-500 text-sm text-center py-8">
+                  <TableCell colSpan={6} className="text-muted-foreground text-sm text-center py-8">
                     No documents yet. Add a URL or upload a file below.
                   </TableCell>
                 </TableRow>
@@ -154,19 +152,17 @@ export default async function KnowledgeOrgPage({
         </CardContent>
       </Card>
 
-      {/* Add sources */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
-          <h2 className="text-sm font-medium text-zinc-300">Add URL</h2>
+          <h2 className="text-sm font-medium text-foreground">Add URL</h2>
           <AddUrlForm slug={slug} />
         </div>
         <div className="space-y-3">
-          <h2 className="text-sm font-medium text-zinc-300">Upload File</h2>
+          <h2 className="text-sm font-medium text-foreground">Upload File</h2>
           <FileUploadForm slug={slug} />
         </div>
       </div>
 
-      {/* Integrations */}
       <IntegrationsPanel slug={slug} />
     </div>
   );

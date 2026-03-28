@@ -9,14 +9,32 @@ interface OutcomeData {
   active: number;
 }
 
-const COLORS = {
-  resolved: "#22c55e",
-  "needs info": "#eab308",
-  unknown: "#71717a",
-  active: "#3b82f6",
+function cssVar(name: string) {
+  if (typeof window === "undefined") return "";
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function useChartPalette() {
+  const resolved = `oklch(${cssVar("--chart-2") || "0.627 0.194 149.57"})`;
+  const needsInfo = `oklch(${cssVar("--chart-3") || "0.547 0.021 43.1"})`;
+  const unknown = `oklch(${cssVar("--chart-4") || "0.714 0.014 41.2"})`;
+  const active = `oklch(${cssVar("--chart-1") || "0.367 0.016 35.7"})`;
+  const card = `oklch(${cssVar("--card") || "0.214 0.009 43.1"})`;
+  const border = `oklch(${cssVar("--border") || "1 0 0 / 10%"})`;
+  const cardFg = `oklch(${cssVar("--card-foreground") || "0.96 0.002 17.2"})`;
+  return { resolved, needsInfo, unknown, active, card, border, cardFg };
+}
+
+const SERIES_MAP: Record<string, "resolved" | "needsInfo" | "unknown" | "active"> = {
+  resolved: "resolved",
+  "needs info": "needsInfo",
+  unknown: "unknown",
+  active: "active",
 };
 
 export function OutcomeChart({ data }: { data: OutcomeData }) {
+  const c = useChartPalette();
+
   const chartData = [
     { name: "resolved", value: data.resolved },
     { name: "needs info", value: data.needs_info },
@@ -26,7 +44,7 @@ export function OutcomeChart({ data }: { data: OutcomeData }) {
 
   if (chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[200px] text-zinc-500 text-sm">
+      <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
         No data yet
       </div>
     );
@@ -47,18 +65,21 @@ export function OutcomeChart({ data }: { data: OutcomeData }) {
           {chartData.map((entry) => (
             <Cell
               key={entry.name}
-              fill={COLORS[entry.name as keyof typeof COLORS]}
-              stroke="transparent"
+              fill={c[SERIES_MAP[entry.name] ?? "unknown"]}
+              stroke={c.card}
+              strokeWidth={2}
             />
           ))}
         </Pie>
         <Tooltip
           contentStyle={{
-            backgroundColor: "#18181b",
-            border: "1px solid #27272a",
+            backgroundColor: c.card,
+            border: `1px solid ${c.border}`,
             borderRadius: 8,
             fontSize: 12,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
           }}
+          itemStyle={{ color: c.cardFg }}
         />
       </PieChart>
     </ResponsiveContainer>

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { getCoalesceApiBase } from "@/lib/api-base";
 const ALLOWED_TYPES = [
@@ -46,7 +45,6 @@ export function FileUploadForm({ slug }: { slug: string }) {
       const token = await getToken();
       const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
-      // Step 1: Get presigned upload URL from backend
       const urlRes = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/upload-url`, {
         method: "POST",
         headers,
@@ -56,14 +54,12 @@ export function FileUploadForm({ slug }: { slug: string }) {
       if (urlRes.ok) {
         const { uploadUrl, storageKey } = await urlRes.json();
 
-        // Step 2: Upload directly to Railway Buckets
         await fetch(uploadUrl, {
           method: "PUT",
           headers: { "Content-Type": file.type || "application/octet-stream" },
           body: file,
         });
 
-        // Step 3: Confirm upload — backend extracts text
         const confirmRes = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/upload`, {
           method: "POST",
           headers,
@@ -75,8 +71,6 @@ export function FileUploadForm({ slug }: { slug: string }) {
           return;
         }
       } else {
-        // Fallback: upload via legacy blob path if presigned URL fails
-        // (e.g., when Railway Buckets not configured)
         const formData = new FormData();
         formData.append("file", file);
         const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
@@ -108,7 +102,7 @@ export function FileUploadForm({ slug }: { slug: string }) {
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card>
       <CardContent className="pt-4">
         <form onSubmit={handleSubmit} className="space-y-3">
           <div
@@ -122,8 +116,8 @@ export function FileUploadForm({ slug }: { slug: string }) {
             }}
             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
               dragOver
-                ? "border-blue-500 bg-blue-500/10"
-                : "border-zinc-700 hover:border-zinc-600"
+                ? "border-primary bg-primary/10"
+                : "border-border hover:border-primary/50"
             }`}
             onClick={() => document.getElementById("file-input")?.click()}
           >
@@ -138,19 +132,15 @@ export function FileUploadForm({ slug }: { slug: string }) {
               }}
             />
             {file ? (
-              <p className="text-sm text-zinc-300">{file.name} ({(file.size / 1024).toFixed(0)}KB)</p>
+              <p className="text-sm text-foreground">{file.name} ({(file.size / 1024).toFixed(0)}KB)</p>
             ) : (
               <>
-                <p className="text-sm text-zinc-400">Drop a file here or click to browse</p>
-                <p className="text-xs text-zinc-600 mt-1">PDF, Markdown, text, JSON (max 10MB)</p>
+                <p className="text-sm text-muted-foreground">Drop a file here or click to browse</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">PDF, Markdown, text, JSON (max 10MB)</p>
               </>
             )}
           </div>
-          <Button
-            type="submit"
-            disabled={!file || loading}
-            className="w-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
-          >
+          <Button type="submit" disabled={!file || loading} className="w-full">
             {loading ? "Uploading..." : "Upload"}
           </Button>
         </form>

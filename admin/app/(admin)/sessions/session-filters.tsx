@@ -76,15 +76,11 @@ export function SessionFilters() {
           <Button
             key={s}
             size="sm"
-            variant={currentStatus === s ? "default" : "ghost"}
+            variant={currentStatus === s ? "secondary" : "ghost"}
             onClick={() =>
               pushFromDrafts(orgDraft, qDraft, s)
             }
-            className={`text-xs h-7 ${
-              currentStatus === s
-                ? "bg-zinc-700 text-zinc-100"
-                : "text-zinc-400 hover:text-zinc-100"
-            }`}
+            className="text-xs h-7"
           >
             {s === "all" ? "All" : s.replace("_", " ")}
           </Button>
@@ -94,13 +90,13 @@ export function SessionFilters() {
         placeholder="Filter by org slug..."
         value={orgDraft}
         onChange={(e) => onOrgChange(e.target.value)}
-        className="w-36 h-7 text-xs bg-zinc-800 border-zinc-700 text-zinc-100"
+        className="w-36 h-7 text-xs"
       />
       <Input
         placeholder="Search..."
         value={qDraft}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="w-40 h-7 text-xs bg-zinc-800 border-zinc-700 text-zinc-100"
+        className="w-40 h-7 text-xs"
       />
       <ExportSessionsButton />
     </div>

@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { adminFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -25,11 +26,11 @@ interface SessionDetail {
   };
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  resolved: "bg-green-500/20 text-green-400 border-green-500/30",
-  needs_info: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  unknown: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
-  active: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+  resolved: "default",
+  needs_info: "outline",
+  unknown: "secondary",
+  active: "outline",
 };
 
 export default async function SessionDetailPage({
@@ -62,27 +63,25 @@ export default async function SessionDetailPage({
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
-        <Link href="/sessions" className="text-zinc-500 hover:text-zinc-300 text-sm">
+        <Link href="/sessions" className="text-muted-foreground hover:text-foreground text-sm">
           &larr; Sessions
         </Link>
       </div>
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-zinc-100 font-mono">
+          <h1 className="text-lg font-semibold text-foreground font-mono">
             {session.id.slice(0, 12)}&hellip;
           </h1>
           <div className="flex items-center gap-3 mt-2">
-            <span
-              className={`text-xs px-2 py-0.5 rounded border ${STATUS_COLORS[session.status] ?? "bg-zinc-800 text-zinc-400 border-zinc-700"}`}
-            >
+            <Badge variant={STATUS_VARIANT[session.status] ?? "secondary"}>
               {session.status}
-            </span>
-            <span className="text-xs text-zinc-500">
+            </Badge>
+            <span className="text-xs text-muted-foreground">
               {new Date(session.created_at).toLocaleString()}
             </span>
             {duration !== null && (
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-muted-foreground">
                 Resolved in {duration < 60 ? `${duration}s` : `${(duration / 60).toFixed(1)}m`}
               </span>
             )}
@@ -90,10 +89,9 @@ export default async function SessionDetailPage({
         </div>
       </div>
 
-      {/* Original request */}
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-xs text-zinc-400 uppercase tracking-wider">
+          <CardTitle className="text-xs text-muted-foreground uppercase tracking-wider">
             Original Request
           </CardTitle>
         </CardHeader>
@@ -101,24 +99,24 @@ export default async function SessionDetailPage({
           <div className="grid grid-cols-2 gap-4 text-sm">
             {session.original_request.endpoint && (
               <div>
-                <p className="text-xs text-zinc-500">Endpoint</p>
-                <p className="text-zinc-200 font-mono text-xs">
+                <p className="text-xs text-muted-foreground">Endpoint</p>
+                <p className="text-foreground/80 font-mono text-xs">
                   {session.original_request.endpoint}
                 </p>
               </div>
             )}
             {session.original_request.error_code && (
               <div>
-                <p className="text-xs text-zinc-500">Error Code</p>
-                <p className="text-zinc-200 font-mono text-xs">
+                <p className="text-xs text-muted-foreground">Error Code</p>
+                <p className="text-foreground/80 font-mono text-xs">
                   {session.original_request.error_code}
                 </p>
               </div>
             )}
             {session.original_request.context && (
               <div className="col-span-2">
-                <p className="text-xs text-zinc-500">Context</p>
-                <p className="text-zinc-300 text-xs mt-1">
+                <p className="text-xs text-muted-foreground">Context</p>
+                <p className="text-foreground/70 text-xs mt-1">
                   {session.original_request.context}
                 </p>
               </div>
@@ -126,8 +124,8 @@ export default async function SessionDetailPage({
             {session.original_request.tried &&
               session.original_request.tried.length > 0 && (
                 <div className="col-span-2">
-                  <p className="text-xs text-zinc-500">Already Tried</p>
-                  <ul className="text-zinc-300 text-xs mt-1 list-disc list-inside">
+                  <p className="text-xs text-muted-foreground">Already Tried</p>
+                  <ul className="text-foreground/70 text-xs mt-1 list-disc list-inside">
                     {session.original_request.tried.map((t, i) => (
                       <li key={i}>{t}</li>
                     ))}
@@ -138,19 +136,18 @@ export default async function SessionDetailPage({
         </CardContent>
       </Card>
 
-      {/* Conversation timeline */}
       <div className="space-y-3">
-        <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Conversation ({session.turns.length} turns)
         </h2>
         <div className="space-y-3">
           {session.turns.map((turn, i) => (
             <div
               key={i}
-              className={`rounded-lg p-4 ${
+              className={`rounded-lg p-4 border ${
                 turn.role === "user"
-                  ? "bg-zinc-800/50 border border-zinc-800 ml-0 mr-12"
-                  : "bg-zinc-900 border border-zinc-700 ml-12 mr-0"
+                  ? "bg-muted/50 border-border ml-0 mr-12"
+                  : "bg-card border-border ml-12 mr-0"
               }`}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -162,7 +159,7 @@ export default async function SessionDetailPage({
                   {turn.role === "user" ? "Agent" : "Coalesce"}
                 </span>
               </div>
-              <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed">
+              <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-mono leading-relaxed">
                 {typeof turn.content === "string"
                   ? turn.content.slice(0, 5000)
                   : JSON.stringify(turn.content, null, 2).slice(0, 5000)}
@@ -170,7 +167,7 @@ export default async function SessionDetailPage({
             </div>
           ))}
           {session.turns.length === 0 && (
-            <p className="text-zinc-500 text-sm text-center py-4">
+            <p className="text-muted-foreground text-sm text-center py-4">
               No conversation turns recorded.
             </p>
           )}

@@ -25,7 +25,7 @@ export function DocActions({
     try {
       const token = await getToken();
       await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"}/admin/orgs/${slug}/docs/${sourceId}/sync`,
+        `${getCoalesceApiBase()}/admin/orgs/${slug}/docs/${sourceId}/sync`,
         { method: "POST", headers: { Authorization: `Bearer ${token}` } },
       );
       router.refresh();
@@ -57,7 +57,7 @@ export function DocActions({
           variant="ghost"
           onClick={sync}
           disabled={loading !== null}
-          className="text-xs text-zinc-400 hover:text-zinc-100"
+          className="text-xs text-muted-foreground hover:text-foreground"
         >
           {loading === "sync" ? "Syncing…" : "Sync"}
         </Button>
@@ -75,7 +75,7 @@ export function DocActions({
         </Button>
       ) : (
         <div className="flex items-center gap-1">
-          <span className="text-xs text-zinc-400">Sure?</span>
+          <span className="text-xs text-muted-foreground">Sure?</span>
           <Button
             size="sm"
             variant="ghost"
@@ -89,7 +89,7 @@ export function DocActions({
             size="sm"
             variant="ghost"
             onClick={() => setConfirmDelete(false)}
-            className="text-xs text-zinc-500"
+            className="text-xs text-muted-foreground"
           >
             No
           </Button>

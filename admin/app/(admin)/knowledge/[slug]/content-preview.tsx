@@ -50,23 +50,23 @@ export function ContentPreview({ slug, sourceId }: { slug: string; sourceId: str
         size="sm"
         variant="ghost"
         onClick={handleOpen}
-        className="text-xs text-zinc-400 hover:text-zinc-100 h-7"
+        className="text-xs text-muted-foreground hover:text-foreground h-7"
       >
         Preview
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-zinc-100 truncate">
+            <DialogTitle className="truncate">
               {content?.title ?? "Content Preview"}
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-auto">
-            {loading && <p className="text-sm text-zinc-500 p-4">Loading...</p>}
-            {error && <p className="text-sm text-red-400 p-4">{error}</p>}
+            {loading && <p className="text-sm text-muted-foreground p-4">Loading...</p>}
+            {error && <p className="text-sm text-destructive p-4">{error}</p>}
             {content && (
-              <pre className="text-xs text-zinc-300 bg-zinc-950 p-4 rounded whitespace-pre-wrap font-mono leading-relaxed">
+              <pre className="text-xs text-foreground/80 bg-muted p-4 rounded whitespace-pre-wrap font-mono leading-relaxed">
                 {content.content.slice(0, 10000)}
                 {content.content.length > 10000 && "\n\n... (truncated)"}
               </pre>

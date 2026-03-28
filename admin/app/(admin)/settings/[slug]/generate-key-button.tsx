@@ -66,18 +66,14 @@ export function GenerateKeyButton({ slug }: { slug: string }) {
 
   return (
     <>
-      <Button
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="bg-zinc-100 text-zinc-900 hover:bg-zinc-200 text-xs"
-      >
+      <Button size="sm" onClick={() => setOpen(true)} className="text-xs">
         Generate Key
       </Button>
 
       <Dialog open={open} onOpenChange={(v) => { if (!v) close(); }}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-zinc-100">
+            <DialogTitle>
               {result ? "API Key Generated" : "Generate API Key"}
             </DialogTitle>
           </DialogHeader>
@@ -85,7 +81,7 @@ export function GenerateKeyButton({ slug }: { slug: string }) {
           {!result ? (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="key-label" className="text-zinc-400 text-xs">
+                <Label htmlFor="key-label" className="text-muted-foreground text-xs">
                   Label (optional)
                 </Label>
                 <Input
@@ -93,14 +89,9 @@ export function GenerateKeyButton({ slug }: { slug: string }) {
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder="e.g. production"
-                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
                 />
               </div>
-              <Button
-                onClick={generate}
-                disabled={loading}
-                className="w-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
-              >
+              <Button onClick={generate} disabled={loading} className="w-full">
                 {loading ? "Generating…" : "Generate"}
               </Button>
             </div>
@@ -110,18 +101,14 @@ export function GenerateKeyButton({ slug }: { slug: string }) {
                 Copy this key now — it will not be shown again.
               </p>
               <div className="flex gap-2">
-                <code className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-xs font-mono text-zinc-300 break-all">
+                <code className="flex-1 bg-muted border border-border rounded px-3 py-2 text-xs font-mono text-foreground/80 break-all">
                   {result.rawKey}
                 </code>
-                <Button
-                  size="sm"
-                  onClick={copy}
-                  className="shrink-0 bg-zinc-700 hover:bg-zinc-600 text-zinc-100"
-                >
+                <Button size="sm" variant="secondary" onClick={copy} className="shrink-0">
                   {copied ? "Copied!" : "Copy"}
                 </Button>
               </div>
-              <Button onClick={close} className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-100">
+              <Button variant="outline" onClick={close} className="w-full">
                 Done
               </Button>
             </div>

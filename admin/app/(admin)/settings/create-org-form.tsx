@@ -50,11 +50,11 @@ export function CreateOrgForm() {
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card>
       <CardContent className="pt-4">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="org-name" className="text-zinc-400 text-xs">
+            <Label htmlFor="org-name" className="text-muted-foreground text-xs">
               Name
             </Label>
             <Input
@@ -63,11 +63,10 @@ export function CreateOrgForm() {
               onChange={(e) => setName(e.target.value)}
               placeholder="Acme Inc"
               required
-              className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="org-slug" className="text-zinc-400 text-xs">
+            <Label htmlFor="org-slug" className="text-muted-foreground text-xs">
               Slug
             </Label>
             <Input
@@ -76,15 +75,11 @@ export function CreateOrgForm() {
               onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
               placeholder="acme"
               required
-              className="bg-zinc-800 border-zinc-700 text-zinc-100 font-mono placeholder:text-zinc-600"
+              className="font-mono"
             />
           </div>
-          {error && <p className="text-xs text-red-400">{error}</p>}
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
-          >
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Creating…" : "Create Org"}
           </Button>
         </form>

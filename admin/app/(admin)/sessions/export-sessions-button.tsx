@@ -54,7 +54,7 @@ export function ExportSessionsButton() {
       variant="ghost"
       disabled={loading}
       onClick={exportCsv}
-      className="text-xs h-7 text-zinc-400 hover:text-zinc-100"
+      className="text-xs h-7 text-muted-foreground hover:text-foreground"
     >
       {loading ? "Exporting…" : "Export CSV"}
     </Button>

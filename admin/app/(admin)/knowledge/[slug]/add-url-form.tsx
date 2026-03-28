@@ -53,11 +53,11 @@ export function AddUrlForm({ slug }: { slug: string }) {
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card>
       <CardContent className="pt-4">
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="doc-url" className="text-zinc-400 text-xs">
+            <Label htmlFor="doc-url" className="text-muted-foreground text-xs">
               URL
             </Label>
             <Input
@@ -67,20 +67,15 @@ export function AddUrlForm({ slug }: { slug: string }) {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://docs.example.com/api"
               required
-              className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
             />
           </div>
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
           {submitted && (
             <p className="text-xs text-green-400">
               Scraping started — check status in the table above.
             </p>
           )}
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
-          >
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Submitting…" : "Scrape this page"}
           </Button>
         </form>

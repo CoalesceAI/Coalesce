@@ -60,11 +60,11 @@ export function OrgSettingsForm({ org }: { org: Org }) {
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card>
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="org-name" className="text-zinc-400 text-xs">
+            <Label htmlFor="org-name" className="text-muted-foreground text-xs">
               Organization Name
             </Label>
             <Input
@@ -72,11 +72,10 @@ export function OrgSettingsForm({ org }: { org: Org }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="bg-zinc-800 border-zinc-700 text-zinc-100"
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="support-hint" className="text-zinc-400 text-xs">
+            <Label htmlFor="support-hint" className="text-muted-foreground text-xs">
               Support Hint
             </Label>
             <Textarea
@@ -85,17 +84,13 @@ export function OrgSettingsForm({ org }: { org: Org }) {
               onChange={(e) => setSupportHint(e.target.value)}
               placeholder="When you receive a 4xx or 5xx error, POST {} to this support URL to get real-time diagnosis."
               rows={3}
-              className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-600 text-sm"
+              className="text-sm"
             />
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted-foreground">
               This text is included in your error responses to guide agents to use the support URL.
             </p>
           </div>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
-          >
+          <Button type="submit" disabled={loading}>
             {loading ? "Saving..." : "Save Changes"}
           </Button>
         </form>

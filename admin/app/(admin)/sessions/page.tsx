@@ -33,10 +33,10 @@ interface SessionsResponse {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  resolved: "bg-green-500/20 text-green-400 border-green-500/30",
-  needs_info: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  unknown: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
-  active: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  resolved: "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/25",
+  needs_info: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/25",
+  unknown: "bg-stone-500/15 text-stone-600 dark:text-stone-400 border-stone-500/25",
+  active: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/25",
 };
 
 function sessionsHref(
@@ -83,55 +83,55 @@ export default async function SessionsPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-100">Sessions</h1>
-        <span className="text-sm text-zinc-500">{data.total} total</span>
+        <h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
+        <span className="text-sm text-muted-foreground">{data.total} total</span>
       </div>
 
       <Suspense fallback={null}>
         <SessionFilters />
       </Suspense>
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-zinc-800 hover:bg-transparent">
-                <TableHead className="text-zinc-400">ID</TableHead>
-                <TableHead className="text-zinc-400">Org</TableHead>
-                <TableHead className="text-zinc-400">Status</TableHead>
-                <TableHead className="text-zinc-400">Turns</TableHead>
-                <TableHead className="text-zinc-400">Created</TableHead>
-                <TableHead className="text-zinc-400">Resolved</TableHead>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>ID</TableHead>
+                <TableHead>Org</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Turns</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Resolved</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.sessions.map((s) => (
-                <TableRow key={s.id} className="border-zinc-800 hover:bg-zinc-800/50">
+                <TableRow key={s.id}>
                   <TableCell>
                     <Link
                       href={`/sessions/${s.id}`}
-                      className="text-blue-400 hover:underline text-xs font-mono"
+                      className="text-primary hover:underline text-xs font-mono"
                     >
                       {s.id.slice(0, 8)}&hellip;
                     </Link>
                   </TableCell>
-                  <TableCell className="text-xs text-zinc-300">
+                  <TableCell className="text-xs text-foreground">
                     {s.org_name ?? s.org_slug ?? "\u2014"}
                   </TableCell>
                   <TableCell>
                     <span
-                      className={`text-xs px-2 py-0.5 rounded border ${STATUS_COLORS[s.status] ?? "bg-zinc-800 text-zinc-400 border-zinc-700"}`}
+                      className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_COLORS[s.status] ?? "bg-muted text-muted-foreground border-border"}`}
                     >
                       {s.status}
                     </span>
                   </TableCell>
-                  <TableCell className="text-xs text-zinc-400">
+                  <TableCell className="text-xs text-muted-foreground">
                     {s.turn_count}
                   </TableCell>
-                  <TableCell className="text-xs text-zinc-500">
+                  <TableCell className="text-xs text-muted-foreground">
                     {new Date(s.created_at).toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-xs text-zinc-500">
+                  <TableCell className="text-xs text-muted-foreground">
                     {s.resolved_at
                       ? new Date(s.resolved_at).toLocaleString()
                       : "\u2014"}
@@ -140,7 +140,7 @@ export default async function SessionsPage({
               ))}
               {data.sessions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-zinc-500 text-sm text-center py-8">
+                  <TableCell colSpan={6} className="text-muted-foreground text-sm text-center py-8">
                     No sessions found matching filters.
                   </TableCell>
                 </TableRow>
@@ -156,18 +156,18 @@ export default async function SessionsPage({
           {page > 1 && (
             <Link
               href={sessionsHref(params, page - 1)}
-              className="text-sm text-zinc-400 hover:text-zinc-100 px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
+              className="text-sm text-muted-foreground hover:text-foreground px-3 py-1 rounded-md bg-secondary hover:bg-secondary/80 transition-colors"
             >
               Previous
             </Link>
           )}
-          <span className="text-sm text-zinc-500 px-3 py-1">
+          <span className="text-sm text-muted-foreground px-3 py-1">
             Page {page} of {totalPages}
           </span>
           {page < totalPages && (
             <Link
               href={sessionsHref(params, page + 1)}
-              className="text-sm text-zinc-400 hover:text-zinc-100 px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
+              className="text-sm text-muted-foreground hover:text-foreground px-3 py-1 rounded-md bg-secondary hover:bg-secondary/80 transition-colors"
             >
               Next
             </Link>
