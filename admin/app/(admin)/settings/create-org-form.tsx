@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@clerk/nextjs";
 import { getCoalesceApiBase } from "@/lib/api-base";
+import { useOrg } from "@/lib/org-context";
 
 export function CreateOrgForm() {
-  const router = useRouter();
   const { getToken } = useAuth();
+  const { refreshOrgs } = useOrg();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [error, setError] = useState("");
@@ -23,23 +23,20 @@ export function CreateOrgForm() {
     setLoading(true);
     try {
       const token = await getToken();
-      const res = await fetch(
-        `${getCoalesceApiBase()}/admin/orgs`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ name, slug }),
+      const res = await fetch(`${getCoalesceApiBase()}/admin/orgs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({ name, slug }),
+      });
       if (!res.ok) {
         const body = await res.json();
         setError(body.error ?? "Failed to create org");
         return;
       }
-      router.refresh();
+      await refreshOrgs();
       setName("");
       setSlug("");
     } catch (err) {
@@ -51,7 +48,7 @@ export function CreateOrgForm() {
 
   return (
     <Card>
-      <CardContent className="pt-4">
+      <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="org-name" className="text-muted-foreground text-xs">
@@ -72,7 +69,9 @@ export function CreateOrgForm() {
             <Input
               id="org-slug"
               value={slug}
-              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
+              onChange={(e) =>
+                setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))
+              }
               placeholder="acme"
               required
               className="font-mono"
@@ -80,7 +79,7 @@ export function CreateOrgForm() {
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Creating…" : "Create Org"}
+            {loading ? "Creating\u2026" : "Create Organization"}
           </Button>
         </form>
       </CardContent>

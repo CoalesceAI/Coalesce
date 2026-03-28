@@ -6,65 +6,188 @@ import { UserButton } from "@clerk/nextjs";
 import {
   BarChart2,
   MessageSquare,
-  Building2,
   BookOpen,
+  Settings,
+  ChevronsUpDown,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useOrg } from "@/lib/org-context";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", Icon: BarChart2 },
   { href: "/sessions", label: "Sessions", Icon: MessageSquare },
-  { href: "/settings", label: "Organizations", Icon: Building2 },
   { href: "/knowledge", label: "Knowledge Base", Icon: BookOpen },
+  { href: "/settings", label: "Settings", Icon: Settings },
 ] as const;
 
-export function Sidebar() {
+function OrgAvatar({ name, className }: { name: string; className?: string }) {
+  const initial = name.charAt(0).toUpperCase();
+  return (
+    <div
+      className={cn(
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold",
+        "group-data-[collapsible=icon]:h-6 group-data-[collapsible=icon]:w-6 group-data-[collapsible=icon]:text-[10px]",
+        className,
+      )}
+    >
+      {initial}
+    </div>
+  );
+}
+
+export function AppSidebar() {
   const pathname = usePathname();
+  const { currentOrg } = useOrg();
 
   return (
-    <aside className="w-56 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-sidebar-border">
-        <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">
-          Coalesce
-        </span>
-        <span className="text-[10px] ml-1.5 text-muted-foreground font-medium uppercase tracking-wider">
-          admin
-        </span>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {NAV.map(({ href, label, Icon }) => {
-          const active = pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
-              )}
-            >
-              <Icon
-                className={cn(
-                  "w-4 h-4 shrink-0",
-                  active ? "text-sidebar-primary" : "opacity-60",
+    <Sidebar collapsible="icon" variant="sidebar">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm outline-none hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+                {currentOrg ? (
+                  <>
+                    <OrgAvatar name={currentOrg.name} />
+                    <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                      <span className="truncate font-semibold text-sidebar-foreground">
+                        {currentOrg.name}
+                      </span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        Free Tier
+                      </span>
+                    </div>
+                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
+                  </>
+                ) : (
+                  <>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground text-xs font-semibold group-data-[collapsible=icon]:h-6 group-data-[collapsible=icon]:w-6">
+                      ?
+                    </div>
+                    <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                      <span className="truncate font-semibold text-muted-foreground">
+                        No Organization
+                      </span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        Create one to get started
+                      </span>
+                    </div>
+                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
+                  </>
                 )}
-                strokeWidth={1.75}
-              />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-64"
+                align="start"
+                side="bottom"
+                sideOffset={4}
+              >
+                {/* GroupLabel must live inside Menu.Group (Base UI) */}
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    Organization
+                  </DropdownMenuLabel>
+                  {currentOrg ? (
+                    <DropdownMenuItem
+                      disabled
+                      className="cursor-default gap-2 p-2 opacity-100 focus:bg-transparent data-[disabled]:opacity-100"
+                    >
+                      <OrgAvatar
+                        name={currentOrg.name}
+                        className="h-6 w-6 text-[10px]"
+                      />
+                      <span className="truncate text-sm font-medium">
+                        {currentOrg.name}
+                      </span>
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        window.location.href = "/settings";
+                      }}
+                      className="gap-2 p-2"
+                    >
+                      <Plus className="h-4 w-4 opacity-60" />
+                      <span className="text-sm">Set up in Settings</span>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    window.location.href = "/settings";
+                  }}
+                  className="gap-2 p-2"
+                >
+                  <Settings className="h-4 w-4 opacity-60" />
+                  <span className="text-sm">Organization settings</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-sidebar-border">
-        <UserButton />
-      </div>
-    </aside>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV.map(({ href, label, Icon }) => {
+                const active = pathname.startsWith(href);
+                return (
+                  <SidebarMenuItem key={href}>
+                    <SidebarMenuButton
+                      render={<Link href={href} />}
+                      isActive={active}
+                      tooltip={label}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-4 w-4",
+                          active ? "text-sidebar-primary" : "opacity-60",
+                        )}
+                        strokeWidth={1.75}
+                      />
+                      <span>{label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="px-2 py-2">
+              <UserButton />
+            </div>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 }

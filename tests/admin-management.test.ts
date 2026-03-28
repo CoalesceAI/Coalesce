@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 
 // ---------------------------------------------------------------------------
 // Mock pool — all DB calls go through query()
@@ -12,11 +13,12 @@ vi.mock('../src/db/pool.js', () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Mock admin-auth — bypass Clerk JWT verification entirely
+// Mock admin-auth — bypass Clerk JWT verification, set userId
 // ---------------------------------------------------------------------------
 
 vi.mock('../src/middleware/admin-auth.js', () => ({
-  adminAuth: vi.fn(async (_c: unknown, next: () => Promise<void>) => {
+  adminAuth: vi.fn(async (c: Context, next: () => Promise<void>) => {
+    c.set('userId', 'test-user-1');
     await next();
   }),
 }));
@@ -51,6 +53,10 @@ function fakeOrg(overrides?: object) {
   };
 }
 
+function mockMembershipCheck(role: 'admin' | 'member' = 'admin') {
+  mockQuery.mockResolvedValueOnce({ rows: [{ role }], rowCount: 1 });
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -60,7 +66,15 @@ describe('POST /admin/orgs', () => {
 
   it('valid { name, slug } → 201 + org object', async () => {
     const org = fakeOrg();
+    // countUserOrgs
+    mockQuery.mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 });
+    // createOrg INSERT
     mockQuery.mockResolvedValueOnce({ rows: [org], rowCount: 1 });
+    // addMember INSERT
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: 'mem-1', org_id: 'org-1', user_id: 'test-user-1', email: null, role: 'admin', status: 'active', invited_by: null, created_at: new Date(), updated_at: new Date() }],
+      rowCount: 1,
+    });
 
     const app = buildTestApp();
     const res = await app.request('/admin/orgs', {
@@ -76,6 +90,9 @@ describe('POST /admin/orgs', () => {
   });
 
   it('duplicate slug → 409', async () => {
+    // countUserOrgs
+    mockQuery.mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 });
+    // createOrg throws unique violation
     const pgError = Object.assign(new Error('duplicate key'), { code: '23505' });
     mockQuery.mockRejectedValueOnce(pgError);
 
@@ -101,6 +118,22 @@ describe('POST /admin/orgs', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('free tier limit reached → 403', async () => {
+    // countUserOrgs returns 1 (at limit)
+    mockQuery.mockResolvedValueOnce({ rows: [{ count: '1' }], rowCount: 1 });
+
+    const app = buildTestApp();
+    const res = await app.request('/admin/orgs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: 'second', name: 'Second' }),
+    });
+
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.code).toBe('ORG_LIMIT_REACHED');
+  });
 });
 
 describe('POST /admin/orgs/:slug/keys', () => {
@@ -108,8 +141,10 @@ describe('POST /admin/orgs/:slug/keys', () => {
 
   it('returns rawKey in response body (only time it is shown)', async () => {
     const org = fakeOrg();
-    // getOrgBySlug query
+    // getOrgBySlug
     mockQuery.mockResolvedValueOnce({ rows: [org], rowCount: 1 });
+    // getUserOrgRole
+    mockMembershipCheck('admin');
     // createApiKey INSERT query
     mockQuery.mockResolvedValueOnce({ rows: [{ id: 'key-1' }], rowCount: 1 });
 
@@ -136,7 +171,11 @@ describe('GET /admin/orgs/:slug/keys', () => {
     const keys = [
       { id: 'key-1', prefix: 'clsc_live_abc1', label: 'default', created_at: new Date(), revoked_at: null },
     ];
+    // getOrgBySlug
     mockQuery.mockResolvedValueOnce({ rows: [org], rowCount: 1 });
+    // getUserOrgRole
+    mockMembershipCheck();
+    // listOrgApiKeys
     mockQuery.mockResolvedValueOnce({ rows: keys, rowCount: 1 });
 
     const app = buildTestApp();
@@ -151,6 +190,19 @@ describe('GET /admin/orgs/:slug/keys', () => {
     expect(body[0]).toHaveProperty('created_at');
     expect(body[0]).toHaveProperty('revoked_at');
   });
+
+  it('non-member gets 403', async () => {
+    const org = fakeOrg();
+    // getOrgBySlug
+    mockQuery.mockResolvedValueOnce({ rows: [org], rowCount: 1 });
+    // getUserOrgRole — no membership
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const app = buildTestApp();
+    const res = await app.request('/admin/orgs/acme/keys');
+
+    expect(res.status).toBe(403);
+  });
 });
 
 describe('DELETE /admin/orgs/:slug/keys/:id', () => {
@@ -158,8 +210,12 @@ describe('DELETE /admin/orgs/:slug/keys/:id', () => {
 
   it('sets revoked_at — returns ok', async () => {
     const org = fakeOrg();
-    mockQuery.mockResolvedValueOnce({ rows: [org], rowCount: 1 }); // getOrgBySlug
-    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });    // revokeApiKey UPDATE
+    // getOrgBySlug
+    mockQuery.mockResolvedValueOnce({ rows: [org], rowCount: 1 });
+    // getUserOrgRole
+    mockMembershipCheck('admin');
+    // revokeApiKey UPDATE
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
     const app = buildTestApp();
     const res = await app.request('/admin/orgs/acme/keys/key-1', {
@@ -170,7 +226,6 @@ describe('DELETE /admin/orgs/:slug/keys/:id', () => {
     const body = await res.json() as { ok: boolean };
     expect(body.ok).toBe(true);
 
-    // Verify the UPDATE query was called with the key id and org id
     const updateCall = mockQuery.mock.calls.find(
       (call) => typeof call[0] === 'string' && call[0].includes('revoked_at'),
     );
@@ -184,7 +239,6 @@ describe('Regression: revoked key → 401', () => {
   beforeEach(() => mockQuery.mockReset());
 
   it('validateApiKey with revoked key returns null', async () => {
-    // validateApiKey filters WHERE revoked_at IS NULL — simulate no rows returned
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
     const { validateApiKey } = await import('../src/repositories/api-keys.js');

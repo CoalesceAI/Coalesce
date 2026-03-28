@@ -1,10 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { adminAuth } from "../middleware/admin-auth.js";
+import { adminAuth, type AdminAuthEnv } from "../middleware/admin-auth.js";
 import { pool } from "../db/pool.js";
 import { getRecentActivity } from "../services/activity.js";
 import {
-  listOrgs,
   getOrgBySlug,
   createOrg,
   updateOrg,
@@ -16,24 +15,49 @@ import {
   listOrgApiKeys,
   revokeApiKey,
 } from "../repositories/api-keys.js";
+import {
+  listUserOrgs,
+  listOrgMembers,
+  addMember,
+  removeMember,
+  updateMemberRole,
+  getUserOrgRole,
+  countUserOrgs,
+  countOrgAdmins,
+  findMemberByEmail,
+} from "../repositories/organization-members.js";
+import { bootstrapDefaultOrgIfNeeded } from "../repositories/org-bootstrap.js";
 
 // ---------------------------------------------------------------------------
-// Admin routes — all require Clerk JWT via adminAuth
-//
-// Analytics:
-//   GET /admin/ping                        — health check
-//   GET /admin/stats                       — aggregate session stats
-//   GET /admin/sessions                    — paginated session list
-//   GET /admin/sessions/:id                — session detail with turns[]
-//
-// Org management:
-//   GET    /admin/orgs                     — list orgs
-//   POST   /admin/orgs                     — create org
-//   GET    /admin/orgs/:slug               — org detail
-//   DELETE /admin/orgs/:slug               — soft delete
-//   GET    /admin/orgs/:slug/keys          — list api keys
-//   POST   /admin/orgs/:slug/keys          — generate key (rawKey returned once)
-//   DELETE /admin/orgs/:slug/keys/:id      — revoke key
+// Helpers
+// ---------------------------------------------------------------------------
+
+const FREE_TIER_ORG_LIMIT = 1;
+
+async function requireOrgMembership(
+  orgSlug: string,
+  userId: string,
+  requiredRole?: "admin",
+): Promise<
+  | { org: { id: string; slug: string; name: string; settings: Record<string, unknown>; signing_secret: string; created_at: Date; updated_at: Date }; role: "admin" | "member" }
+  | { error: { message: string; code: string; status: 403 | 404 } }
+> {
+  const org = await getOrgBySlug(orgSlug);
+  if (!org || org.deleted_at) {
+    return { error: { message: "Not found", code: "NOT_FOUND", status: 404 } };
+  }
+  const role = await getUserOrgRole(org.id, userId);
+  if (!role) {
+    return { error: { message: "Not a member of this organization", code: "FORBIDDEN", status: 403 } };
+  }
+  if (requiredRole === "admin" && role !== "admin") {
+    return { error: { message: "Admin role required", code: "FORBIDDEN", status: 403 } };
+  }
+  return { org, role };
+}
+
+// ---------------------------------------------------------------------------
+// Schemas
 // ---------------------------------------------------------------------------
 
 const CreateOrgSchema = z.object({
@@ -46,7 +70,16 @@ const UpdateOrgSchema = z.object({
   settings: z.record(z.string(), z.unknown()).optional(),
 });
 
-export const adminRoute = new Hono()
+const AddMemberSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(["admin", "member"]).default("member"),
+});
+
+const UpdateMemberRoleSchema = z.object({
+  role: z.enum(["admin", "member"]),
+});
+
+export const adminRoute = new Hono<AdminAuthEnv>()
   .use("*", adminAuth)
 
   // -------------------------------------------------------------------------
@@ -54,6 +87,38 @@ export const adminRoute = new Hono()
   // -------------------------------------------------------------------------
 
   .get("/ping", (c) => c.json({ ok: true }))
+
+  // -------------------------------------------------------------------------
+  // Current user
+  // -------------------------------------------------------------------------
+
+  .get("/me/orgs", async (c) => {
+    const userId = c.get("userId");
+    const orgs = await listUserOrgs(userId);
+    return c.json(orgs);
+  })
+
+  // POST /admin/me/bootstrap — create default org + admin membership if user has none (first sign-in)
+  .post("/me/bootstrap", async (c) => {
+    const userId = c.get("userId");
+    try {
+      let name: string | undefined;
+      try {
+        const body = await c.req.json<{ name?: string }>();
+        if (body.name && typeof body.name === "string") name = body.name.trim().slice(0, 100);
+      } catch {
+        /* empty body is fine */
+      }
+      const { created, orgs } = await bootstrapDefaultOrgIfNeeded(userId, name);
+      return c.json({ created, orgs });
+    } catch (err: unknown) {
+      console.error("[admin/me/bootstrap]", err);
+      return c.json(
+        { error: "Could not create default organization", code: "BOOTSTRAP_ERROR" },
+        500,
+      );
+    }
+  })
 
   // -------------------------------------------------------------------------
   // Analytics
@@ -354,25 +419,36 @@ export const adminRoute = new Hono()
   // Org management
   // -------------------------------------------------------------------------
 
-  // GET /admin/orgs — list all non-deleted orgs
+  // GET /admin/orgs — list orgs the user belongs to
   .get("/orgs", async (c) => {
-    const orgs = await listOrgs();
+    const userId = c.get("userId");
+    const orgs = await listUserOrgs(userId);
     return c.json(orgs);
   })
 
-  // POST /admin/orgs — create org
+  // POST /admin/orgs — create org (auto-adds creator as admin)
   .post("/orgs", async (c) => {
+    const userId = c.get("userId");
     const body = await c.req.json().catch(() => ({}));
     const parsed = CreateOrgSchema.safeParse(body);
     if (!parsed.success) {
       return c.json({ error: "Invalid request body", code: "VALIDATION_ERROR" }, 400);
     }
+
+    const orgCount = await countUserOrgs(userId);
+    if (orgCount >= FREE_TIER_ORG_LIMIT) {
+      return c.json(
+        { error: `Free tier is limited to ${FREE_TIER_ORG_LIMIT} organization`, code: "ORG_LIMIT_REACHED" },
+        403,
+      );
+    }
+
     const { slug, name } = parsed.data;
     try {
       const org = await createOrg(slug, name);
+      await addMember(org.id, userId, null, "admin");
       return c.json(org, 201);
     } catch (err: unknown) {
-      // Postgres unique violation: code 23505
       if (
         err instanceof Error &&
         "code" in err &&
@@ -384,17 +460,20 @@ export const adminRoute = new Hono()
     }
   })
 
-  // GET /admin/orgs/:slug — get single org
+  // GET /admin/orgs/:slug — get single org (requires membership)
   .get("/orgs/:slug", async (c) => {
-    const org = await getOrgBySlug(c.req.param("slug"));
-    if (!org || org.deleted_at) {
-      return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
-    }
-    return c.json(org);
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId);
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+    return c.json({ ...check.org, role: check.role });
   })
 
-  // PATCH /admin/orgs/:slug — update org name/settings
+  // PATCH /admin/orgs/:slug — update org name/settings (admin only)
   .patch("/orgs/:slug", async (c) => {
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId, "admin");
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
     const body = await c.req.json().catch(() => ({}));
     const parsed = UpdateOrgSchema.safeParse(body);
     if (!parsed.success) {
@@ -407,12 +486,12 @@ export const adminRoute = new Hono()
     return c.json(updated);
   })
 
-  // GET /admin/orgs/:slug/stats — org-specific session stats
+  // GET /admin/orgs/:slug/stats — org-specific session stats (requires membership)
   .get("/orgs/:slug/stats", async (c) => {
-    const org = await getOrgBySlug(c.req.param("slug"));
-    if (!org || org.deleted_at) {
-      return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
-    }
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId);
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+    const org = check.org;
     const result = await pool.query<{
       total: string;
       resolved: string;
@@ -445,8 +524,12 @@ export const adminRoute = new Hono()
     });
   })
 
-  // POST /admin/orgs/:slug/signing-secret/rotate — rotate signing secret
+  // POST /admin/orgs/:slug/signing-secret/rotate (admin only)
   .post("/orgs/:slug/signing-secret/rotate", async (c) => {
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId, "admin");
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
     const newSecret = await rotateSigningSecret(c.req.param("slug"));
     if (!newSecret) {
       return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
@@ -454,8 +537,12 @@ export const adminRoute = new Hono()
     return c.json({ signing_secret: newSecret });
   })
 
-  // DELETE /admin/orgs/:slug — soft delete
+  // DELETE /admin/orgs/:slug — soft delete (admin only)
   .delete("/orgs/:slug", async (c) => {
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId, "admin");
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
     const deleted = await softDeleteOrg(c.req.param("slug"));
     if (!deleted) {
       return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
@@ -463,36 +550,131 @@ export const adminRoute = new Hono()
     return c.json({ ok: true });
   })
 
-  // POST /admin/orgs/:slug/keys — create API key (rawKey returned once)
+  // POST /admin/orgs/:slug/keys — create API key (admin only)
   .post("/orgs/:slug/keys", async (c) => {
-    const org = await getOrgBySlug(c.req.param("slug"));
-    if (!org || org.deleted_at) {
-      return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
-    }
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId, "admin");
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
     const body = await c.req.json().catch(() => ({})) as { label?: string };
-    const result = await createApiKey(org.id, body.label);
+    const result = await createApiKey(check.org.id, body.label);
     return c.json(result, 201);
   })
 
-  // GET /admin/orgs/:slug/keys — list keys (no rawKey)
+  // GET /admin/orgs/:slug/keys — list keys (requires membership)
   .get("/orgs/:slug/keys", async (c) => {
-    const org = await getOrgBySlug(c.req.param("slug"));
-    if (!org || org.deleted_at) {
-      return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
-    }
-    const keys = await listOrgApiKeys(org.id);
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId);
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
+    const keys = await listOrgApiKeys(check.org.id);
     return c.json(keys);
   })
 
-  // DELETE /admin/orgs/:slug/keys/:id — revoke key
+  // DELETE /admin/orgs/:slug/keys/:id — revoke key (admin only)
   .delete("/orgs/:slug/keys/:id", async (c) => {
-    const org = await getOrgBySlug(c.req.param("slug"));
-    if (!org || org.deleted_at) {
-      return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
-    }
-    const revoked = await revokeApiKey(c.req.param("id"), org.id);
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId, "admin");
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
+    const revoked = await revokeApiKey(c.req.param("id"), check.org.id);
     if (!revoked) {
       return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
+    }
+    return c.json({ ok: true });
+  })
+
+  // -------------------------------------------------------------------------
+  // Team Members
+  // -------------------------------------------------------------------------
+
+  // GET /admin/orgs/:slug/members — list org members
+  .get("/orgs/:slug/members", async (c) => {
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId);
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
+    const members = await listOrgMembers(check.org.id);
+    return c.json(members);
+  })
+
+  // POST /admin/orgs/:slug/members — invite member (admin only)
+  .post("/orgs/:slug/members", async (c) => {
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId, "admin");
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = AddMemberSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid request body", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    const existing = await findMemberByEmail(check.org.id, parsed.data.email);
+    if (existing) {
+      return c.json({ error: "User is already a member", code: "ALREADY_MEMBER" }, 409);
+    }
+
+    const member = await addMember(
+      check.org.id,
+      `pending_${parsed.data.email}`,
+      parsed.data.email,
+      parsed.data.role,
+      userId,
+      "pending",
+    );
+    return c.json(member, 201);
+  })
+
+  // PATCH /admin/orgs/:slug/members/:memberId — update role (admin only)
+  .patch("/orgs/:slug/members/:memberId", async (c) => {
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId, "admin");
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = UpdateMemberRoleSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid request body", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    const targetUserId = c.req.param("memberId");
+
+    if (parsed.data.role === "member") {
+      const adminCount = await countOrgAdmins(check.org.id);
+      if (adminCount <= 1) {
+        const currentRole = await getUserOrgRole(check.org.id, targetUserId);
+        if (currentRole === "admin") {
+          return c.json({ error: "Cannot demote the last admin", code: "LAST_ADMIN" }, 400);
+        }
+      }
+    }
+
+    const updated = await updateMemberRole(check.org.id, targetUserId, parsed.data.role);
+    if (!updated) {
+      return c.json({ error: "Member not found", code: "NOT_FOUND" }, 404);
+    }
+    return c.json(updated);
+  })
+
+  // DELETE /admin/orgs/:slug/members/:memberId — remove member (admin only)
+  .delete("/orgs/:slug/members/:memberId", async (c) => {
+    const userId = c.get("userId");
+    const check = await requireOrgMembership(c.req.param("slug"), userId, "admin");
+    if ("error" in check) return c.json({ error: check.error.message, code: check.error.code }, check.error.status);
+
+    const targetUserId = c.req.param("memberId");
+
+    if (targetUserId === userId) {
+      const adminCount = await countOrgAdmins(check.org.id);
+      if (adminCount <= 1) {
+        return c.json({ error: "Cannot remove the last admin", code: "LAST_ADMIN" }, 400);
+      }
+    }
+
+    const removed = await removeMember(check.org.id, targetUserId);
+    if (!removed) {
+      return c.json({ error: "Member not found", code: "NOT_FOUND" }, 404);
     }
     return c.json({ ok: true });
   })

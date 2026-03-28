@@ -1,5 +1,7 @@
-import { Sidebar } from "@/components/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { OrgProvider } from "@/lib/org-context";
 
 export default function AdminLayout({
   children,
@@ -7,14 +9,19 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-12 border-b border-border flex items-center justify-end px-6 shrink-0 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-          <ThemeToggle />
-        </header>
-        <main className="flex-1 p-6 md:p-8 overflow-auto">{children}</main>
-      </div>
-    </div>
+    <OrgProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4 bg-background sticky top-0 z-10">
+            <SidebarTrigger className="-ml-1" />
+            <ThemeToggle />
+          </header>
+          <div className="p-6 md:p-8">
+            {children}
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </OrgProvider>
   );
 }

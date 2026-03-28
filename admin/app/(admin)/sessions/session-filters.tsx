@@ -5,67 +5,55 @@ import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ExportSessionsButton } from "./export-sessions-button";
+import { useOrg } from "@/lib/org-context";
 
 const STATUSES = ["all", "active", "resolved", "needs_info", "unknown"] as const;
 
 export function SessionFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { currentOrg } = useOrg();
+
   const currentStatus = searchParams.get("status") ?? "all";
-  const orgFromUrl = searchParams.get("org") ?? "";
   const qFromUrl = searchParams.get("q") ?? "";
 
-  const [orgDraft, setOrgDraft] = useState(orgFromUrl);
   const [qDraft, setQDraft] = useState(qFromUrl);
-  const orgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const qTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latest = useRef({ org: orgDraft, q: qDraft, status: currentStatus });
-  latest.current = { org: orgDraft, q: qDraft, status: currentStatus };
-
-  useEffect(() => {
-    setOrgDraft(orgFromUrl);
-  }, [orgFromUrl]);
+  const latest = useRef({ q: qDraft, status: currentStatus });
+  latest.current = { q: qDraft, status: currentStatus };
 
   useEffect(() => {
     setQDraft(qFromUrl);
   }, [qFromUrl]);
 
-  function buildParams(overrides: Record<string, string>) {
+  // Auto-inject org into URL when org changes
+  useEffect(() => {
+    const orgInUrl = searchParams.get("org") ?? "";
+    const orgSlug = currentOrg?.slug ?? "";
+    if (orgSlug && orgInUrl !== orgSlug) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("org", orgSlug);
+      params.delete("page");
+      router.replace(`/sessions?${params.toString()}`);
+    }
+  }, [currentOrg?.slug, searchParams, router]);
+
+  function buildHref(overrides: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("page");
+    if (currentOrg) params.set("org", currentOrg.slug);
     for (const [key, value] of Object.entries(overrides)) {
       if (value) params.set(key, value);
       else params.delete(key);
     }
-    return params;
-  }
-
-  function pushFromDrafts(org: string, q: string, statusKey: string) {
-    const statusVal = statusKey === "all" ? "" : statusKey;
-    router.push(
-      `/sessions?${buildParams({
-        status: statusVal,
-        org,
-        q,
-      }).toString()}`,
-    );
-  }
-
-  function onOrgChange(value: string) {
-    setOrgDraft(value);
-    if (orgTimer.current) clearTimeout(orgTimer.current);
-    orgTimer.current = setTimeout(() => {
-      const { q, status } = latest.current;
-      pushFromDrafts(value, q, status);
-    }, 400);
+    return `/sessions?${params.toString()}`;
   }
 
   function onSearchChange(value: string) {
     setQDraft(value);
     if (qTimer.current) clearTimeout(qTimer.current);
     qTimer.current = setTimeout(() => {
-      const { org, status } = latest.current;
-      pushFromDrafts(org, value, status);
+      router.push(buildHref({ q: value }));
     }, 400);
   }
 
@@ -78,7 +66,9 @@ export function SessionFilters() {
             size="sm"
             variant={currentStatus === s ? "secondary" : "ghost"}
             onClick={() =>
-              pushFromDrafts(orgDraft, qDraft, s)
+              router.push(
+                buildHref({ status: s === "all" ? "" : s }),
+              )
             }
             className="text-xs h-7"
           >
@@ -86,12 +76,6 @@ export function SessionFilters() {
           </Button>
         ))}
       </div>
-      <Input
-        placeholder="Filter by org slug..."
-        value={orgDraft}
-        onChange={(e) => onOrgChange(e.target.value)}
-        className="w-36 h-7 text-xs"
-      />
       <Input
         placeholder="Search..."
         value={qDraft}

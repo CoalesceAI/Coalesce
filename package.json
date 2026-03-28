@@ -13,6 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --reporter=verbose",
     "migrate": "tsx src/db/migrate.ts",
+    "db:reset": "tsx src/db/reset.ts",
+    "db:fresh": "npm run db:reset && npm run seed",
     "seed": "tsx src/db/seed-agentmail.ts",
     "seed-web": "tsx src/db/seed-from-web.ts",
     "generate-url": "tsx src/db/generate-signed-url.ts"

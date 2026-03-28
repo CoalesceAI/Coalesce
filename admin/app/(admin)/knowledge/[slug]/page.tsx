@@ -58,8 +58,14 @@ export default async function KnowledgeOrgPage({
   const { slug } = await params;
 
   let docs: DocSource[] = [];
+  let orgTitle = slug;
   try {
-    docs = await adminFetch<DocSource[]>(`/admin/orgs/${slug}/docs`, {}, token);
+    const [docsRes, orgRes] = await Promise.all([
+      adminFetch<DocSource[]>(`/admin/orgs/${slug}/docs`, {}, token),
+      adminFetch<{ name: string }>(`/admin/orgs/${slug}`, {}, token),
+    ]);
+    docs = docsRes;
+    orgTitle = orgRes.name;
   } catch {
     notFound();
   }
@@ -73,7 +79,7 @@ export default async function KnowledgeOrgPage({
       </div>
 
       <h1 className="text-2xl font-semibold tracking-tight">
-        {slug} &mdash; Knowledge Base
+        {orgTitle} — Knowledge Base
       </h1>
 
       <Card>
