@@ -15,6 +15,7 @@ import { AddUrlForm } from "./add-url-form";
 import { FileUploadForm } from "./file-upload-form";
 import { DocActions } from "./doc-actions";
 import { ContentPreview } from "./content-preview";
+import { IntegrationsPanel } from "./integrations";
 
 interface DocSource {
   id: string;
@@ -164,6 +165,9 @@ export default async function KnowledgeOrgPage({
           <FileUploadForm slug={slug} />
         </div>
       </div>
+
+      {/* Integrations */}
+      <IntegrationsPanel slug={slug} />
     </div>
   );
 }
