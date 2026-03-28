@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { adminFetch } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -10,6 +10,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Link from "next/link";
+import { Suspense } from "react";
+import { SessionFilters } from "./session-filters";
 
 interface Session {
   id: string;
@@ -23,6 +25,13 @@ interface Session {
   turn_count: number;
 }
 
+interface SessionsResponse {
+  sessions: Session[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   resolved: "bg-green-500/20 text-green-400 border-green-500/30",
   needs_info: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
@@ -33,19 +42,26 @@ const STATUS_COLORS: Record<string, string> = {
 export default async function SessionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { getToken } = await auth();
   const token = await getToken();
   if (!token) return null;
 
-  const { page } = await searchParams;
-  const currentPage = Math.max(1, Number(page ?? "1"));
+  const params = await searchParams;
+  const page = Number(params.page ?? "1");
   const limit = 50;
-  const offset = (currentPage - 1) * limit;
+  const offset = (page - 1) * limit;
 
-  const data = await adminFetch<{ sessions: Session[]; total: number }>(
-    `/admin/sessions?limit=${limit}&offset=${offset}`,
+  const queryParams = new URLSearchParams();
+  queryParams.set("limit", String(limit));
+  queryParams.set("offset", String(offset));
+  if (params.status) queryParams.set("status", params.status);
+  if (params.org) queryParams.set("org", params.org);
+  if (params.q) queryParams.set("q", params.q);
+
+  const data = await adminFetch<SessionsResponse>(
+    `/admin/sessions?${queryParams.toString()}`,
     {},
     token,
   );
@@ -59,14 +75,17 @@ export default async function SessionsPage({
         <span className="text-sm text-zinc-500">{data.total} total</span>
       </div>
 
+      <Suspense fallback={null}>
+        <SessionFilters />
+      </Suspense>
+
       <Card className="bg-zinc-900 border-zinc-800">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow className="border-zinc-800 hover:bg-transparent">
-                <TableHead className="text-zinc-400">Session ID</TableHead>
+                <TableHead className="text-zinc-400">ID</TableHead>
                 <TableHead className="text-zinc-400">Org</TableHead>
-                <TableHead className="text-zinc-400">Customer</TableHead>
                 <TableHead className="text-zinc-400">Status</TableHead>
                 <TableHead className="text-zinc-400">Turns</TableHead>
                 <TableHead className="text-zinc-400">Created</TableHead>
@@ -75,23 +94,17 @@ export default async function SessionsPage({
             </TableHeader>
             <TableBody>
               {data.sessions.map((s) => (
-                <TableRow
-                  key={s.id}
-                  className="border-zinc-800 hover:bg-zinc-800/50"
-                >
+                <TableRow key={s.id} className="border-zinc-800 hover:bg-zinc-800/50">
                   <TableCell>
                     <Link
                       href={`/sessions/${s.id}`}
-                      className="font-mono text-xs text-blue-400 hover:underline"
+                      className="text-blue-400 hover:underline text-xs font-mono"
                     >
-                      {s.id.slice(0, 8)}…
+                      {s.id.slice(0, 8)}&hellip;
                     </Link>
                   </TableCell>
-                  <TableCell className="text-xs text-zinc-400">
-                    {s.org_name ?? s.org_id?.slice(0, 8) ?? "\u2014"}
-                  </TableCell>
-                  <TableCell className="text-xs text-zinc-400">
-                    {s.external_customer_id ?? "—"}
+                  <TableCell className="text-xs text-zinc-300">
+                    {s.org_name ?? s.org_slug ?? "\u2014"}
                   </TableCell>
                   <TableCell>
                     <span
@@ -109,32 +122,40 @@ export default async function SessionsPage({
                   <TableCell className="text-xs text-zinc-500">
                     {s.resolved_at
                       ? new Date(s.resolved_at).toLocaleString()
-                      : "—"}
+                      : "\u2014"}
                   </TableCell>
                 </TableRow>
               ))}
+              {data.sessions.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-zinc-500 text-sm text-center py-8">
+                    No sessions found matching filters.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
+      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
-          {currentPage > 1 && (
+        <div className="flex justify-center gap-2">
+          {page > 1 && (
             <Link
-              href={`/sessions?page=${currentPage - 1}`}
-              className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
+              href={`/sessions?${new URLSearchParams({ ...params, page: String(page - 1) } as Record<string, string>).toString()}`}
+              className="text-sm text-zinc-400 hover:text-zinc-100 px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
             >
               Previous
             </Link>
           )}
-          <span>
-            Page {currentPage} of {totalPages}
+          <span className="text-sm text-zinc-500 px-3 py-1">
+            Page {page} of {totalPages}
           </span>
-          {currentPage < totalPages && (
+          {page < totalPages && (
             <Link
-              href={`/sessions?page=${currentPage + 1}`}
-              className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
+              href={`/sessions?${new URLSearchParams({ ...params, page: String(page + 1) } as Record<string, string>).toString()}`}
+              className="text-sm text-zinc-400 hover:text-zinc-100 px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
             >
               Next
             </Link>

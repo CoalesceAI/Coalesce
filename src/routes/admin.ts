@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { adminAuth } from "../middleware/admin-auth.js";
 import { pool } from "../db/pool.js";
+import { getRecentActivity } from "../services/activity.js";
 import {
   listOrgs,
   getOrgBySlug,
@@ -167,6 +168,35 @@ export const adminRoute = new Hono()
   .get("/sessions", async (c) => {
     const limit = Math.min(Number(c.req.query("limit") ?? "50"), 100);
     const offset = Number(c.req.query("offset") ?? "0");
+    const orgSlug = c.req.query("org");
+    const status = c.req.query("status");
+    const customerId = c.req.query("customer_id");
+    const search = c.req.query("q");
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (orgSlug) {
+      conditions.push(`o.slug = $${idx++}`);
+      params.push(orgSlug);
+    }
+    if (status) {
+      conditions.push(`s.status = $${idx++}`);
+      params.push(status);
+    }
+    if (customerId) {
+      conditions.push(`s.external_customer_id = $${idx++}`);
+      params.push(customerId);
+    }
+    if (search) {
+      conditions.push(`(s.original_request::text ILIKE $${idx} OR s.id::text ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    params.push(limit, offset);
 
     const listResult = await pool.query<{
       id: string;
@@ -184,13 +214,16 @@ export const adminRoute = new Hono()
               jsonb_array_length(s.turns) AS turn_count
        FROM sessions s
        LEFT JOIN organizations o ON o.id = s.org_id
+       ${whereClause}
        ORDER BY s.created_at DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset],
+       LIMIT $${idx++} OFFSET $${idx}`,
+      params,
     );
 
+    const countParams = params.slice(0, -2);
     const countResult = await pool.query<{ total: string }>(
-      "SELECT COUNT(*) AS total FROM sessions",
+      `SELECT COUNT(*) AS total FROM sessions s LEFT JOIN organizations o ON o.id = s.org_id ${whereClause}`,
+      countParams,
     );
 
     return c.json({
@@ -210,6 +243,87 @@ export const adminRoute = new Hono()
       limit,
       offset,
     });
+  })
+
+  // GET /admin/stats/resolution-funnel
+  .get("/stats/resolution-funnel", async (c) => {
+    const result = await pool.query<{
+      total: string;
+      reached_needs_info: string;
+      resolved: string;
+      avg_to_needs_info_ms: string | null;
+      avg_to_resolved_ms: string | null;
+    }>(`
+      SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE status IN ('needs_info', 'resolved')) AS reached_needs_info,
+        COUNT(*) FILTER (WHERE status = 'resolved') AS resolved,
+        AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) * 1000)
+          FILTER (WHERE status = 'resolved' AND resolved_at IS NOT NULL)
+          AS avg_to_resolved_ms,
+        NULL AS avg_to_needs_info_ms
+      FROM sessions
+    `);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const row = result.rows[0]!;
+    return c.json({
+      total: Number(row.total),
+      reached_needs_info: Number(row.reached_needs_info),
+      resolved: Number(row.resolved),
+      avg_to_resolved_ms: row.avg_to_resolved_ms ? Number(row.avg_to_resolved_ms) : null,
+    });
+  })
+
+  // PATCH /admin/sessions/:id — manual status override
+  .patch("/sessions/:id", async (c) => {
+    const body = await c.req.json().catch(() => ({})) as { status?: string };
+    const validStatuses = ["active", "resolved", "needs_info", "unknown"];
+    if (!body.status || !validStatuses.includes(body.status)) {
+      return c.json({ error: "Invalid status", code: "VALIDATION_ERROR" }, 400);
+    }
+    const result = await pool.query(
+      `UPDATE sessions SET status = $1, resolved_at = CASE WHEN $1 = 'resolved' THEN COALESCE(resolved_at, now()) ELSE resolved_at END
+       WHERE id = $2 RETURNING id`,
+      [body.status, c.req.param("id")],
+    );
+    if (result.rowCount === 0) {
+      return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
+    }
+    return c.json({ ok: true });
+  })
+
+  // GET /admin/sessions/export — CSV export
+  .get("/sessions/export", async (c) => {
+    const result = await pool.query<{
+      id: string;
+      org_slug: string | null;
+      external_customer_id: string | null;
+      status: string;
+      created_at: Date;
+      resolved_at: Date | null;
+      turn_count: string;
+      endpoint: string | null;
+      error_code: string | null;
+    }>(
+      `SELECT s.id, o.slug AS org_slug, s.external_customer_id, s.status,
+              s.created_at, s.resolved_at,
+              jsonb_array_length(s.turns) AS turn_count,
+              s.original_request->>'endpoint' AS endpoint,
+              s.original_request->>'error_code' AS error_code
+       FROM sessions s
+       LEFT JOIN organizations o ON o.id = s.org_id
+       ORDER BY s.created_at DESC
+       LIMIT 10000`,
+    );
+
+    const header = "id,org,customer_id,status,endpoint,error_code,turns,created_at,resolved_at\n";
+    const rows = result.rows.map((r) =>
+      [r.id, r.org_slug ?? "", r.external_customer_id ?? "", r.status, r.endpoint ?? "", r.error_code ?? "", r.turn_count, r.created_at.toISOString(), r.resolved_at?.toISOString() ?? ""].join(","),
+    ).join("\n");
+
+    c.header("Content-Type", "text/csv");
+    c.header("Content-Disposition", "attachment; filename=sessions.csv");
+    return c.body(header + rows);
   })
 
   .get("/sessions/:id", async (c) => {
@@ -381,4 +495,15 @@ export const adminRoute = new Hono()
       return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
     }
     return c.json({ ok: true });
+  })
+
+  // -------------------------------------------------------------------------
+  // Activity Feed
+  // -------------------------------------------------------------------------
+
+  .get("/activity", async (c) => {
+    const limit = Math.min(Number(c.req.query("limit") ?? "50"), 200);
+    const orgId = c.req.query("org_id");
+    const events = await getRecentActivity(limit, orgId ?? undefined);
+    return c.json(events);
   });
