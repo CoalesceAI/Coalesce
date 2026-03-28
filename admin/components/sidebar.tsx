@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import {
   BarChart2,
@@ -10,6 +10,7 @@ import {
   Settings,
   ChevronsUpDown,
   Plus,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOrg } from "@/lib/org-context";
@@ -58,7 +59,19 @@ function OrgAvatar({ name, className }: { name: string; className?: string }) {
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { currentOrg } = useOrg();
+  const router = useRouter();
+  const { currentOrg, userOrgs, switchOrg } = useOrg();
+
+  function handleSwitchOrg(slug: string) {
+    switchOrg(slug);
+    // Knowledge base URL is scoped by org slug — keep it in sync when switching
+    if (pathname.startsWith("/knowledge/") && pathname !== "/knowledge") {
+      const segment = pathname.slice("/knowledge/".length).split("/")[0];
+      if (segment && segment !== slug) {
+        router.replace(`/knowledge/${slug}`);
+      }
+    }
+  }
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -106,21 +119,27 @@ export function AppSidebar() {
                 {/* GroupLabel must live inside Menu.Group (Base UI) */}
                 <DropdownMenuGroup>
                   <DropdownMenuLabel className="text-xs text-muted-foreground">
-                    Organization
+                    {userOrgs.length > 1
+                      ? "Switch organization"
+                      : "Organization"}
                   </DropdownMenuLabel>
-                  {currentOrg ? (
-                    <DropdownMenuItem
-                      disabled
-                      className="cursor-default gap-2 p-2 opacity-100 focus:bg-transparent data-[disabled]:opacity-100"
-                    >
-                      <OrgAvatar
-                        name={currentOrg.name}
-                        className="h-6 w-6 text-[10px]"
-                      />
-                      <span className="truncate text-sm font-medium">
-                        {currentOrg.name}
-                      </span>
-                    </DropdownMenuItem>
+                  {userOrgs.length > 0 ? (
+                    userOrgs.map((org) => (
+                      <DropdownMenuItem
+                        key={org.slug}
+                        onClick={() => handleSwitchOrg(org.slug)}
+                        className="gap-2 p-2"
+                      >
+                        <OrgAvatar
+                          name={org.name}
+                          className="h-6 w-6 text-[10px]"
+                        />
+                        <span className="truncate text-sm">{org.name}</span>
+                        {currentOrg?.slug === org.slug && (
+                          <Check className="ml-auto h-4 w-4 shrink-0 opacity-80" />
+                        )}
+                      </DropdownMenuItem>
+                    ))
                   ) : (
                     <DropdownMenuItem
                       onClick={() => {
