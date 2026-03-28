@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import { getCoalesceApiBase } from "@/lib/api-base";
 import { Button } from "@/components/ui/button";
 
 export function DocActions({
@@ -38,7 +39,7 @@ export function DocActions({
     try {
       const token = await getToken();
       await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"}/admin/orgs/${slug}/docs/${sourceId}`,
+        `${getCoalesceApiBase()}/admin/orgs/${slug}/docs/${sourceId}`,
         { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
       );
       router.refresh();

@@ -65,7 +65,7 @@ export function TimelineChart({ data }: { data: TimelinePoint[] }) {
             borderRadius: 8,
             fontSize: 12,
           }}
-          labelFormatter={formatDate}
+          labelFormatter={(label) => formatDate(String(label))}
         />
         <Legend
           wrapperStyle={{ fontSize: 12, color: "#a1a1aa" }}

@@ -9,8 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { getCoalesceApiBase } from "@/lib/api-base";
 
 export function ContentPreview({ slug, sourceId }: { slug: string; sourceId: string }) {
   const { getToken } = useAuth();
@@ -24,7 +23,7 @@ export function ContentPreview({ slug, sourceId }: { slug: string; sourceId: str
     setError("");
     try {
       const token = await getToken();
-      const res = await fetch(`${API_BASE}/admin/orgs/${slug}/docs/${sourceId}/content`, {
+      const res = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/${sourceId}/content`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {

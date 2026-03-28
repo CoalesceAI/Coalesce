@@ -39,6 +39,18 @@ const STATUS_COLORS: Record<string, string> = {
   active: "bg-blue-500/20 text-blue-400 border-blue-500/30",
 };
 
+function sessionsHref(
+  p: Record<string, string | undefined>,
+  pageNum: number,
+): string {
+  const q = new URLSearchParams();
+  if (p.status) q.set("status", p.status);
+  if (p.org) q.set("org", p.org);
+  if (p.q) q.set("q", p.q);
+  q.set("page", String(pageNum));
+  return `/sessions?${q.toString()}`;
+}
+
 export default async function SessionsPage({
   searchParams,
 }: {
@@ -143,7 +155,7 @@ export default async function SessionsPage({
         <div className="flex justify-center gap-2">
           {page > 1 && (
             <Link
-              href={`/sessions?${new URLSearchParams({ ...params, page: String(page - 1) } as Record<string, string>).toString()}`}
+              href={sessionsHref(params, page - 1)}
               className="text-sm text-zinc-400 hover:text-zinc-100 px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
             >
               Previous
@@ -154,7 +166,7 @@ export default async function SessionsPage({
           </span>
           {page < totalPages && (
             <Link
-              href={`/sessions?${new URLSearchParams({ ...params, page: String(page + 1) } as Record<string, string>).toString()}`}
+              href={sessionsHref(params, page + 1)}
               className="text-sm text-zinc-400 hover:text-zinc-100 px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
             >
               Next

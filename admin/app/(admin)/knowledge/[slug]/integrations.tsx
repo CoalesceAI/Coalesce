@@ -14,8 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { getCoalesceApiBase } from "@/lib/api-base";
 
 interface NotionPage {
   id: string;
@@ -50,7 +49,7 @@ export function IntegrationsPanel({ slug }: { slug: string }) {
   async function loadIntegrations() {
     try {
       const token = await getToken();
-      const res = await fetch(`${API_BASE}/admin/orgs/${slug}/integrations`, {
+      const res = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/integrations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setIntegrations(await res.json());
@@ -67,7 +66,7 @@ export function IntegrationsPanel({ slug }: { slug: string }) {
     setConnecting(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${API_BASE}/admin/orgs/${slug}/integrations/notion`, {
+      const res = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/integrations/notion`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ access_token: notionToken }),
@@ -90,7 +89,7 @@ export function IntegrationsPanel({ slug }: { slug: string }) {
 
   async function disconnectNotion() {
     const token = await getToken();
-    await fetch(`${API_BASE}/admin/orgs/${slug}/integrations/notion`, {
+    await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/integrations/notion`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -103,7 +102,7 @@ export function IntegrationsPanel({ slug }: { slug: string }) {
     setLoadingPages(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${API_BASE}/admin/orgs/${slug}/integrations/notion/pages`, {
+      const res = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/integrations/notion/pages`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setPages(await res.json());
@@ -117,7 +116,7 @@ export function IntegrationsPanel({ slug }: { slug: string }) {
     setImporting(pageId);
     try {
       const token = await getToken();
-      const res = await fetch(`${API_BASE}/admin/orgs/${slug}/docs/notion`, {
+      const res = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/notion`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ page_id: pageId }),

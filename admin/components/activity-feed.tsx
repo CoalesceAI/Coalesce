@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { getCoalesceApiBase } from "@/lib/api-base";
 
 const ACTION_LABELS: Record<string, string> = {
   "session.created": "New support session",
@@ -37,7 +36,7 @@ export function ActivityFeed() {
     async function load() {
       try {
         const token = await getToken();
-        const res = await fetch(`${API_BASE}/admin/activity?limit=20`, {
+        const res = await fetch(`${getCoalesceApiBase()}/admin/activity?limit=20`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) setEvents(await res.json());

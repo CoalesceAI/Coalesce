@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getCoalesceApiBase } from "@/lib/api-base";
 
 interface GeneratedKey {
   id: string;
@@ -32,7 +33,7 @@ export function GenerateKeyButton({ slug }: { slug: string }) {
     try {
       const token = await getToken();
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"}/admin/orgs/${slug}/keys`,
+        `${getCoalesceApiBase()}/admin/orgs/${slug}/keys`,
         {
           method: "POST",
           headers: {

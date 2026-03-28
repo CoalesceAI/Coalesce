@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@clerk/nextjs";
+import { getCoalesceApiBase } from "@/lib/api-base";
 
 export function CreateOrgForm() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export function CreateOrgForm() {
     try {
       const token = await getToken();
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"}/admin/orgs`,
+        `${getCoalesceApiBase()}/admin/orgs`,
         {
           method: "POST",
           headers: {

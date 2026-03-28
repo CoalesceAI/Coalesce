@@ -7,8 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+import { getCoalesceApiBase } from "@/lib/api-base";
 const ALLOWED_TYPES = [
   "application/pdf",
   "text/plain",
@@ -48,7 +47,7 @@ export function FileUploadForm({ slug }: { slug: string }) {
       const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
       // Step 1: Get presigned upload URL from backend
-      const urlRes = await fetch(`${API_BASE}/admin/orgs/${slug}/docs/upload-url`, {
+      const urlRes = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/upload-url`, {
         method: "POST",
         headers,
         body: JSON.stringify({ filename: file.name, contentType: file.type || "application/octet-stream" }),
@@ -65,7 +64,7 @@ export function FileUploadForm({ slug }: { slug: string }) {
         });
 
         // Step 3: Confirm upload — backend extracts text
-        const confirmRes = await fetch(`${API_BASE}/admin/orgs/${slug}/docs/upload`, {
+        const confirmRes = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/upload`, {
           method: "POST",
           headers,
           body: JSON.stringify({ storageKey, filename: file.name }),
@@ -86,7 +85,7 @@ export function FileUploadForm({ slug }: { slug: string }) {
           return;
         }
         const { blobUrl } = await uploadRes.json();
-        const confirmRes = await fetch(`${API_BASE}/admin/orgs/${slug}/docs/upload`, {
+        const confirmRes = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/upload`, {
           method: "POST",
           headers,
           body: JSON.stringify({ blobUrl, filename: file.name }),

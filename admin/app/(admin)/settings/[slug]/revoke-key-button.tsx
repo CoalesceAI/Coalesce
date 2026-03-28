@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import { getCoalesceApiBase } from "@/lib/api-base";
 import { Button } from "@/components/ui/button";
 
 export function RevokeKeyButton({
@@ -22,7 +23,7 @@ export function RevokeKeyButton({
     try {
       const token = await getToken();
       await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"}/admin/orgs/${slug}/keys/${keyId}`,
+        `${getCoalesceApiBase()}/admin/orgs/${slug}/keys/${keyId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },

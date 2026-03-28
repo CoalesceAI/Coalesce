@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ExportSessionsButton } from "./export-sessions-button";
 
 const STATUSES = ["all", "active", "resolved", "needs_info", "unknown"] as const;
 
@@ -10,17 +12,61 @@ export function SessionFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentStatus = searchParams.get("status") ?? "all";
-  const currentOrg = searchParams.get("org") ?? "";
-  const currentSearch = searchParams.get("q") ?? "";
+  const orgFromUrl = searchParams.get("org") ?? "";
+  const qFromUrl = searchParams.get("q") ?? "";
 
-  function updateParams(updates: Record<string, string>) {
+  const [orgDraft, setOrgDraft] = useState(orgFromUrl);
+  const [qDraft, setQDraft] = useState(qFromUrl);
+  const orgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const qTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef({ org: orgDraft, q: qDraft, status: currentStatus });
+  latest.current = { org: orgDraft, q: qDraft, status: currentStatus };
+
+  useEffect(() => {
+    setOrgDraft(orgFromUrl);
+  }, [orgFromUrl]);
+
+  useEffect(() => {
+    setQDraft(qFromUrl);
+  }, [qFromUrl]);
+
+  function buildParams(overrides: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("page");
-    for (const [key, value] of Object.entries(updates)) {
+    for (const [key, value] of Object.entries(overrides)) {
       if (value) params.set(key, value);
       else params.delete(key);
     }
-    router.push(`/sessions?${params.toString()}`);
+    return params;
+  }
+
+  function pushFromDrafts(org: string, q: string, statusKey: string) {
+    const statusVal = statusKey === "all" ? "" : statusKey;
+    router.push(
+      `/sessions?${buildParams({
+        status: statusVal,
+        org,
+        q,
+      }).toString()}`,
+    );
+  }
+
+  function onOrgChange(value: string) {
+    setOrgDraft(value);
+    if (orgTimer.current) clearTimeout(orgTimer.current);
+    orgTimer.current = setTimeout(() => {
+      const { q, status } = latest.current;
+      pushFromDrafts(value, q, status);
+    }, 400);
+  }
+
+  function onSearchChange(value: string) {
+    setQDraft(value);
+    if (qTimer.current) clearTimeout(qTimer.current);
+    qTimer.current = setTimeout(() => {
+      const { org, status } = latest.current;
+      pushFromDrafts(org, value, status);
+    }, 400);
   }
 
   return (
@@ -31,7 +77,9 @@ export function SessionFilters() {
             key={s}
             size="sm"
             variant={currentStatus === s ? "default" : "ghost"}
-            onClick={() => updateParams({ status: s === "all" ? "" : s })}
+            onClick={() =>
+              pushFromDrafts(orgDraft, qDraft, s)
+            }
             className={`text-xs h-7 ${
               currentStatus === s
                 ? "bg-zinc-700 text-zinc-100"
@@ -44,27 +92,17 @@ export function SessionFilters() {
       </div>
       <Input
         placeholder="Filter by org slug..."
-        value={currentOrg}
-        onChange={(e) => updateParams({ org: e.target.value })}
+        value={orgDraft}
+        onChange={(e) => onOrgChange(e.target.value)}
         className="w-36 h-7 text-xs bg-zinc-800 border-zinc-700 text-zinc-100"
       />
       <Input
         placeholder="Search..."
-        value={currentSearch}
-        onChange={(e) => updateParams({ q: e.target.value })}
+        value={qDraft}
+        onChange={(e) => onSearchChange(e.target.value)}
         className="w-40 h-7 text-xs bg-zinc-800 border-zinc-700 text-zinc-100"
       />
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => {
-          const baseUrl = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"}/admin/sessions/export`;
-          window.open(baseUrl, "_blank");
-        }}
-        className="text-xs h-7 text-zinc-400 hover:text-zinc-100"
-      >
-        Export CSV
-      </Button>
+      <ExportSessionsButton />
     </div>
   );
 }

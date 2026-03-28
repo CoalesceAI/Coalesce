@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+import { getCoalesceApiBase } from "@/lib/api-base";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +24,7 @@ export function AddUrlForm({ slug }: { slug: string }) {
     try {
       const token = await getToken();
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"}/admin/orgs/${slug}/docs/url`,
+        `${getCoalesceApiBase()}/admin/orgs/${slug}/docs/url`,
         {
           method: "POST",
           headers: {
