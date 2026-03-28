@@ -39,6 +39,7 @@ app.route('/', wsRoute(sessionStore, upgradeWebSocket));
 app.route('/email', emailRoute({
   agentmailBaseUrl: process.env['AGENTMAIL_BASE_URL'] ?? 'https://api.agentmail.to/v0',
   agentmailApiKey: process.env['AGENTMAIL_API_KEY'] ?? '',
+  sessionStore,
 }));
 
 app.onError((err, c) => {

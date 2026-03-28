@@ -2,20 +2,25 @@
  * Email channel handler.
  *
  * Receives an AgentMail webhook (message.received), runs diagnosis,
- * and replies with the resolution.
+ * and replies with the resolution. Uses thread_id for multi-turn
+ * session continuity — follow-up emails in the same thread continue
+ * the conversation.
  */
 
 import type { WebhookPayload } from './types.js';
 import { parseEmailForErrorContext } from './parser.js';
 import { sendReply } from './reply.js';
-import { diagnose } from '../../services/diagnosis.js';
+import { diagnose, buildUserMessage } from '../../services/diagnosis.js';
 import { loadOrgDocs } from '../../repositories/documents.js';
 import { getOrgBySlug } from '../../repositories/organizations.js';
+import type { SessionStore } from '../../repositories/sessions.js';
+import type { Session } from '../../domain/session.js';
 import type { SupportRequest } from '../../schemas/request.js';
 
 export interface EmailChannelConfig {
   agentmailBaseUrl: string;
   agentmailApiKey: string;
+  sessionStore: SessionStore;
 }
 
 export async function handleIncomingEmail(
@@ -29,10 +34,11 @@ export async function handleIncomingEmail(
     return;
   }
 
-  const { message } = payload;
+  const { message, thread } = payload;
   const parsed = parseEmailForErrorContext(message);
+  const fromAddr = typeof message.from === 'string' ? message.from : message.from.address;
 
-  console.log(`[email] Incoming from ${typeof message.from === 'string' ? message.from : message.from.address} | subject: ${message.subject}`);
+  console.log(`[email] Incoming from ${fromAddr} | subject: ${message.subject} | thread: ${thread.thread_id} (${thread.message_count} messages)`);
 
   // Load org docs
   const docsContext = await loadOrgDocs(org.id);
@@ -41,78 +47,70 @@ export async function handleIncomingEmail(
     return;
   }
 
-  // Build a support request from the email
-  const request: SupportRequest = {
-    endpoint: parsed.endpoint,
-    error_code: parsed.error_code,
-    context: parsed.context || `Email support request: ${message.subject}`,
-    // Pass the full email body as additional context via 'tried'
-    tried: [`Customer email: ${parsed.body.slice(0, 1000)}`],
-  };
+  // -------------------------------------------------------------------------
+  // Session lookup: thread_id → existing session, or create new
+  // -------------------------------------------------------------------------
 
-  // Run diagnosis
-  const { response: diagnosis } = await diagnose(request, docsContext, [], undefined, org.name);
+  let session: Session;
+  let isFollowUp = false;
+
+  const existing = await config.sessionStore.getByThreadId(thread.thread_id);
+
+  if (existing) {
+    session = existing;
+    isFollowUp = true;
+    console.log(`[email] Continuing session ${session.id} (${session.turns.length} turns)`);
+  } else {
+    session = {
+      id: crypto.randomUUID(),
+      orgId: org.id,
+      emailThreadId: thread.thread_id,
+      createdAt: Date.now(),
+      lastAccessedAt: Date.now(),
+      turns: [],
+      originalRequest: {
+        endpoint: parsed.endpoint ?? '',
+        error_code: parsed.error_code ?? '',
+        context: parsed.context || `Email support request: ${message.subject}`,
+        tried: [],
+      },
+    };
+    console.log(`[email] New session ${session.id}`);
+  }
+
+  // Build request for diagnosis
+  const request: SupportRequest = isFollowUp
+    ? {
+        session_id: session.id,
+        answer: {
+          clarifications: { reply: parsed.body.slice(0, 2000) },
+        },
+      }
+    : {
+        endpoint: parsed.endpoint,
+        error_code: parsed.error_code,
+        context: parsed.context || `Email support request: ${message.subject}`,
+        tried: [`Customer email: ${parsed.body.slice(0, 1000)}`],
+      };
+
+  // Run diagnosis with full conversation history
+  const { response: diagnosis, assistantContent } = await diagnose(
+    request,
+    docsContext,
+    session.turns,
+    undefined,
+    org.name,
+  );
+
+  // Store turns
+  const userContent = buildUserMessage(request, isFollowUp);
+  session.turns.push({ role: 'user', content: userContent });
+  session.turns.push({ role: 'assistant', content: assistantContent });
+  session.lastAccessedAt = Date.now();
+  await config.sessionStore.set(session.id, session);
 
   // Format reply
-  let replyText: string;
-
-  if (diagnosis.status === 'resolved') {
-    replyText = [
-      `Hi,`,
-      ``,
-      `Here's what we found:`,
-      ``,
-      `**Diagnosis:** ${diagnosis.diagnosis}`,
-      ``,
-      `**Fix:** ${diagnosis.fix}`,
-      ``,
-      ...(diagnosis.fix_steps?.length
-        ? [`**Steps:**`, ...diagnosis.fix_steps.map((s, i) => `${i + 1}. ${s.action}`)]
-        : []),
-      ``,
-      ...(diagnosis.references?.length
-        ? [`**References:** ${diagnosis.references.join(', ')}`]
-        : []),
-      ``,
-      `— Apoyo (automated support)`,
-    ].join('\n');
-  } else if (diagnosis.status === 'needs_info') {
-    replyText = [
-      `Hi,`,
-      ``,
-      `We need a bit more info to diagnose this:`,
-      ``,
-      diagnosis.question || 'Could you provide more details about the error?',
-      ``,
-      ...(diagnosis.need_to_clarify?.length
-        ? [`Specifically:`, ...diagnosis.need_to_clarify.map(q => `- ${q}`)]
-        : []),
-      ``,
-      `Just reply to this email with the details.`,
-      ``,
-      `— Apoyo (automated support)`,
-    ].join('\n');
-  } else if (diagnosis.status === 'unknown') {
-    replyText = [
-      `Hi,`,
-      ``,
-      `We couldn't find a specific resolution in our docs for this issue.`,
-      ``,
-      diagnosis.explanation || 'This may require manual investigation.',
-      ``,
-      `We've flagged this for the team.`,
-      ``,
-      `— Apoyo (automated support)`,
-    ].join('\n');
-  } else {
-    replyText = [
-      `Hi,`,
-      ``,
-      `We encountered an error processing your support request. The team has been notified.`,
-      ``,
-      `— Apoyo (automated support)`,
-    ].join('\n');
-  }
+  const replyText = formatReply(diagnosis);
 
   // Send reply
   await sendReply({
@@ -123,5 +121,59 @@ export async function handleIncomingEmail(
     text: replyText,
   });
 
-  console.log(`[email] Replied to ${typeof message.from === 'string' ? message.from : message.from.address} | status: ${diagnosis.status}`);
+  console.log(`[email] Replied to ${fromAddr} | status: ${diagnosis.status} | session: ${session.id} | turn: ${Math.ceil(session.turns.length / 2)}`);
+}
+
+function formatReply(diagnosis: { status: string; [key: string]: unknown }): string {
+  if (diagnosis.status === 'resolved') {
+    const d = diagnosis as { status: 'resolved'; diagnosis: string; fix: string; fix_steps?: { action: string }[]; references?: string[] };
+    return [
+      `Here's what we found:`,
+      ``,
+      `**Diagnosis:** ${d.diagnosis}`,
+      ``,
+      `**Fix:** ${d.fix}`,
+      ...(d.fix_steps?.length
+        ? [``, `**Steps:**`, ...d.fix_steps.map((s, i) => `${i + 1}. ${s.action}`)]
+        : []),
+      ...(d.references?.length
+        ? [``, `**References:** ${d.references.join(', ')}`]
+        : []),
+      ``,
+      `— Coalesce (automated support)`,
+    ].join('\n');
+  }
+
+  if (diagnosis.status === 'needs_info') {
+    const d = diagnosis as { status: 'needs_info'; question?: string; need_to_clarify?: string[] };
+    return [
+      `We need a bit more info to diagnose this:`,
+      ``,
+      d.question || 'Could you provide more details about the error?',
+      ...(d.need_to_clarify?.length
+        ? [``, `Specifically:`, ...d.need_to_clarify.map(q => `- ${q}`)]
+        : []),
+      ``,
+      `Just reply to this email with the details.`,
+      ``,
+      `— Coalesce (automated support)`,
+    ].join('\n');
+  }
+
+  if (diagnosis.status === 'unknown') {
+    const d = diagnosis as { status: 'unknown'; explanation?: string };
+    return [
+      `We couldn't find a specific resolution in our docs for this issue.`,
+      ``,
+      d.explanation || 'This may require manual investigation.',
+      ``,
+      `— Coalesce (automated support)`,
+    ].join('\n');
+  }
+
+  return [
+    `We encountered an error processing your support request.`,
+    ``,
+    `— Coalesce (automated support)`,
+  ].join('\n');
 }

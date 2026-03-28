@@ -7,6 +7,7 @@ export interface Session {
   id: string;
   orgId?: string;
   externalCustomerId?: string;
+  emailThreadId?: string;
   createdAt: number;
   lastAccessedAt: number;
   turns: ConversationTurn[];

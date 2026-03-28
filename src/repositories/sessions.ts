@@ -7,6 +7,7 @@ import type { ConversationTurn, Session } from '../domain/session.js';
 
 export interface SessionStore {
   get(id: string): Promise<Session | undefined>;
+  getByThreadId(threadId: string): Promise<Session | undefined>;
   set(id: string, session: Session): Promise<void>;
   delete(id: string): Promise<void>;
 }
@@ -51,6 +52,15 @@ export class InMemorySessionStore implements SessionStore {
     return session;
   }
 
+  async getByThreadId(threadId: string): Promise<Session | undefined> {
+    for (const session of this.store.values()) {
+      if (session.emailThreadId === threadId) {
+        return this.get(session.id);
+      }
+    }
+    return undefined;
+  }
+
   async set(id: string, session: Session): Promise<void> {
     this.store.set(id, session);
   }
@@ -89,6 +99,7 @@ interface SessionRow {
   id: string;
   org_id: string | null;
   external_customer_id: string | null;
+  email_thread_id: string | null;
   turns: ConversationTurn[];
   original_request: Session['originalRequest'];
   status: string;
@@ -113,36 +124,12 @@ export class PostgresSessionStore implements SessionStore {
    * Retrieves a session by id. Returns undefined if not found or expired.
    * Updates last_accessed_at on a valid hit (sliding-window TTL).
    */
-  async get(id: string): Promise<Session | undefined> {
-    const result = await this.pool.query<SessionRow>(
-      `SELECT id, org_id, external_customer_id, turns, original_request, status, created_at, last_accessed_at
-       FROM sessions
-       WHERE id = $1`,
-      [id],
-    );
-
-    const row = result.rows[0];
-    if (!row) return undefined;
-
-    // TTL check against last_accessed_at
-    const lastAccessed = row.last_accessed_at.getTime();
-    if (Date.now() - lastAccessed > this.ttlMs) {
-      // Expired — delete lazily
-      await this.delete(id);
-      return undefined;
-    }
-
-    // Refresh last_accessed_at (sliding window)
-    const now = new Date();
-    await this.pool.query(
-      `UPDATE sessions SET last_accessed_at = $1 WHERE id = $2`,
-      [now, id],
-    );
-
+  private rowToSession(row: SessionRow, now: Date): Session {
     return {
       id: row.id,
       orgId: row.org_id ?? undefined,
       externalCustomerId: row.external_customer_id ?? undefined,
+      emailThreadId: row.email_thread_id ?? undefined,
       createdAt: row.created_at.getTime(),
       lastAccessedAt: now.getTime(),
       turns: row.turns,
@@ -150,16 +137,51 @@ export class PostgresSessionStore implements SessionStore {
     };
   }
 
+  private async getRow(where: string, params: unknown[]): Promise<Session | undefined> {
+    const result = await this.pool.query<SessionRow>(
+      `SELECT id, org_id, external_customer_id, email_thread_id, turns, original_request, status, created_at, last_accessed_at
+       FROM sessions
+       WHERE ${where}`,
+      params,
+    );
+
+    const row = result.rows[0];
+    if (!row) return undefined;
+
+    const lastAccessed = row.last_accessed_at.getTime();
+    if (Date.now() - lastAccessed > this.ttlMs) {
+      await this.delete(row.id);
+      return undefined;
+    }
+
+    const now = new Date();
+    await this.pool.query(
+      `UPDATE sessions SET last_accessed_at = $1 WHERE id = $2`,
+      [now, row.id],
+    );
+
+    return this.rowToSession(row, now);
+  }
+
+  async get(id: string): Promise<Session | undefined> {
+    return this.getRow('id = $1', [id]);
+  }
+
+  async getByThreadId(threadId: string): Promise<Session | undefined> {
+    return this.getRow('email_thread_id = $1', [threadId]);
+  }
+
   /**
    * Creates or updates a session. Uses UPSERT to handle both insert and update.
    */
   async set(id: string, session: Session): Promise<void> {
     await this.pool.query(
-      `INSERT INTO sessions (id, org_id, external_customer_id, turns, original_request, created_at, last_accessed_at)
-       VALUES ($1, $2, $3, $4, $5, to_timestamp($6::double precision / 1000), to_timestamp($7::double precision / 1000))
+      `INSERT INTO sessions (id, org_id, external_customer_id, email_thread_id, turns, original_request, created_at, last_accessed_at)
+       VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7::double precision / 1000), to_timestamp($8::double precision / 1000))
        ON CONFLICT (id) DO UPDATE SET
          org_id = EXCLUDED.org_id,
          external_customer_id = EXCLUDED.external_customer_id,
+         email_thread_id = EXCLUDED.email_thread_id,
          turns = EXCLUDED.turns,
          original_request = EXCLUDED.original_request,
          last_accessed_at = EXCLUDED.last_accessed_at`,
@@ -167,6 +189,7 @@ export class PostgresSessionStore implements SessionStore {
         id,
         session.orgId ?? null,
         session.externalCustomerId ?? null,
+        session.emailThreadId ?? null,
         JSON.stringify(session.turns),
         JSON.stringify(session.originalRequest),
         session.createdAt,

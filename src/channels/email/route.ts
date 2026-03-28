@@ -30,7 +30,6 @@ export function emailRoute(config: EmailChannelConfig): Hono {
     }
 
     // Process async — return 200 immediately so webhook doesn't timeout
-    // (diagnosis takes ~7 seconds, webhook expects fast response)
     void handleIncomingEmail(orgSlug, payload, config).catch((err) => {
       console.error(`[email] Error handling email for ${orgSlug}:`, (err as Error).message);
     });
