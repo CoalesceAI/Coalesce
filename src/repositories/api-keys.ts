@@ -29,6 +29,32 @@ export async function createApiKey(
   return { id: row.id, prefix, rawKey };
 }
 
+export async function listOrgApiKeys(orgId: string): Promise<Pick<import('../domain/api-key.js').ApiKey, 'id' | 'prefix' | 'label' | 'created_at' | 'revoked_at'>[]> {
+  const result = await query<{
+    id: string;
+    prefix: string;
+    label: string;
+    created_at: Date;
+    revoked_at: Date | null;
+  }>(
+    `SELECT id, prefix, label, created_at, revoked_at
+       FROM api_keys
+      WHERE org_id = $1
+      ORDER BY created_at DESC`,
+    [orgId],
+  );
+  return result.rows;
+}
+
+export async function revokeApiKey(id: string, orgId: string): Promise<boolean> {
+  const result = await query(
+    `UPDATE api_keys SET revoked_at = now()
+      WHERE id = $1 AND org_id = $2 AND revoked_at IS NULL`,
+    [id, orgId],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function validateApiKey(raw: string): Promise<ValidatedKey | null> {
   const keyHash = hashKey(raw);
 
