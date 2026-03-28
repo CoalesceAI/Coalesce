@@ -7,6 +7,7 @@ import { supportRoute } from './routes/support.js';
 import { wsRoute } from './routes/ws.js';
 import { emailRoute } from './channels/email/route.js';
 import { adminRoute } from './routes/admin.js';
+import { knowledgeRoute } from './routes/knowledge.js';
 import { PostgresSessionStore } from './repositories/sessions.js';
 import { pool } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
@@ -38,6 +39,7 @@ app.route('/health', healthRoute);
 app.route('/support', supportRoute(sessionStore));
 app.route('/', wsRoute(sessionStore, upgradeWebSocket));
 app.route('/admin', adminRoute);
+app.route('/admin', knowledgeRoute);
 app.route('/email', emailRoute({
   agentmailBaseUrl: process.env['AGENTMAIL_BASE_URL'] ?? 'https://api.agentmail.to/v0',
   agentmailApiKey: process.env['AGENTMAIL_API_KEY'] ?? '',
