@@ -119,11 +119,27 @@ All `/support/:org` responses use a discriminated union on `status`:
 - `unknown` — includes `explanation`
 - `error` — includes `message`, `code`
 
-## Agent Behavior Findings
+## Context Docs
 
-From blind testing: agents ignore a bare `support` URL field. Adding `support_hint: "POST to the support URL with an empty JSON body..."` gets them to try it. Auth is the remaining blocker — agents use whatever API key they have. Signed URLs solve this.
+Full product and strategy context lives in `docs/internal/`. See [`docs/internal/INDEX.md`](docs/internal/INDEX.md) for the full list. Key things to know:
+
+**Product direction** (`product-direction.md`): The support endpoint is the data funnel, not the product. Real value = observing how agents fail at APIs (Act 1: support endpoint, Act 2: behavioral intelligence, Act 3: Agent-Led Growth platform). Assignment: 3-5 customers by end of April, apply YC May deadline.
+
+**Architecture decisions** (`coalesce-v2-architecture.md`, `coalesce-clarity.md`): No caching (data <200KB, query fast), no S3 (Postgres for everything), no pods (one org = one set of docs), no usage tracking (add when billing matters). Keep it simple — adoption friction kills infra companies.
+
+**Agent behavior** (`agent-behavior-findings.md`): Agents ignore bare `support` URL — treat it as metadata for humans. `support_hint` field gets them to try it. Auth is the remaining blocker — agents use whatever key they have. Signed URLs solve this (token embedded in URL, zero friction).
+
+**Competition** (`product-direction.md`): Plain/Pylon serve humans who manage agents. Kapa/Inkeep are human-facing widgets. Nobody does inline, structured, real-time agent error resolution.
+
+**Demo context** (`coalesce-demo-strategy.md`): Two key audiences — Afore VCs (prove B2A support is a category, not a feature) and AgentMail cofounder (7-second API resolution vs email path, 3-line integration).
 
 ## Deployment
 
 - **Apoyo:** Railway at `coalesce-production.up.railway.app`
 - **AgentMail integration:** tanishq stacks (east + west). Error responses include `support` URL + `support_hint`. Always deploy to BOTH stacks. Always `rm -rf dist/ temp/` before deploy to force full rebuild.
+
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+
+Available gstack skills: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/retro`, `/investigate`, `/document-release`, `/codex`, `/cso`, `/autoplan`, `/careful`, `/freeze`, `/guard`, `/unfreeze`, `/gstack-upgrade`.

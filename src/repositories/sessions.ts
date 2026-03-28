@@ -1,5 +1,9 @@
-import pg from 'pg';
-import type { ConversationTurn, Session } from '../domain/session.js';
+import pg from "pg";
+import type {
+  ConversationTurn,
+  Session,
+  SessionStatus,
+} from "../domain/session.js";
 
 // ---------------------------------------------------------------------------
 // SessionStore interface — swappable to DynamoDB later without business logic changes
@@ -47,7 +51,6 @@ export class InMemorySessionStore implements SessionStore {
       return undefined;
     }
 
-    // Refresh the access time to keep active sessions alive
     session.lastAccessedAt = now;
     return session;
   }
@@ -101,10 +104,11 @@ interface SessionRow {
   external_customer_id: string | null;
   email_thread_id: string | null;
   turns: ConversationTurn[];
-  original_request: Session['originalRequest'];
+  original_request: Session["originalRequest"];
   status: string;
   created_at: Date;
   last_accessed_at: Date;
+  resolved_at: Date | null;
 }
 
 export class PostgresSessionStore implements SessionStore {
@@ -132,14 +136,19 @@ export class PostgresSessionStore implements SessionStore {
       emailThreadId: row.email_thread_id ?? undefined,
       createdAt: row.created_at.getTime(),
       lastAccessedAt: now.getTime(),
+      status: (row.status as SessionStatus) ?? "active",
+      resolvedAt: row.resolved_at ? row.resolved_at.getTime() : undefined,
       turns: row.turns,
       originalRequest: row.original_request,
     };
   }
 
-  private async getRow(where: string, params: unknown[]): Promise<Session | undefined> {
+  private async getRow(
+    where: string,
+    params: unknown[],
+  ): Promise<Session | undefined> {
     const result = await this.pool.query<SessionRow>(
-      `SELECT id, org_id, external_customer_id, email_thread_id, turns, original_request, status, created_at, last_accessed_at
+      `SELECT id, org_id, external_customer_id, email_thread_id, turns, original_request, status, created_at, last_accessed_at, resolved_at
        FROM sessions
        WHERE ${where}`,
       params,
@@ -164,11 +173,11 @@ export class PostgresSessionStore implements SessionStore {
   }
 
   async get(id: string): Promise<Session | undefined> {
-    return this.getRow('id = $1', [id]);
+    return this.getRow("id = $1", [id]);
   }
 
   async getByThreadId(threadId: string): Promise<Session | undefined> {
-    return this.getRow('email_thread_id = $1', [threadId]);
+    return this.getRow("email_thread_id = $1", [threadId]);
   }
 
   /**
@@ -176,15 +185,27 @@ export class PostgresSessionStore implements SessionStore {
    */
   async set(id: string, session: Session): Promise<void> {
     await this.pool.query(
-      `INSERT INTO sessions (id, org_id, external_customer_id, email_thread_id, turns, original_request, created_at, last_accessed_at)
-       VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7::double precision / 1000), to_timestamp($8::double precision / 1000))
+      `INSERT INTO sessions (
+         id, org_id, external_customer_id, email_thread_id,
+         turns, original_request, status,
+         created_at, last_accessed_at, resolved_at
+       )
+       VALUES (
+         $1, $2, $3, $4,
+         $5::jsonb, $6::jsonb, $7,
+         to_timestamp($8::double precision / 1000),
+         to_timestamp($9::double precision / 1000),
+         $10
+       )
        ON CONFLICT (id) DO UPDATE SET
          org_id = EXCLUDED.org_id,
          external_customer_id = EXCLUDED.external_customer_id,
          email_thread_id = EXCLUDED.email_thread_id,
          turns = EXCLUDED.turns,
          original_request = EXCLUDED.original_request,
-         last_accessed_at = EXCLUDED.last_accessed_at`,
+         status = EXCLUDED.status,
+         last_accessed_at = EXCLUDED.last_accessed_at,
+         resolved_at = COALESCE(EXCLUDED.resolved_at, sessions.resolved_at)`,
       [
         id,
         session.orgId ?? null,
@@ -192,8 +213,10 @@ export class PostgresSessionStore implements SessionStore {
         session.emailThreadId ?? null,
         JSON.stringify(session.turns),
         JSON.stringify(session.originalRequest),
+        session.status ?? "active",
         session.createdAt,
         session.lastAccessedAt,
+        session.resolvedAt != null ? new Date(session.resolvedAt) : null,
       ],
     );
   }

@@ -14,6 +14,8 @@ import Link from "next/link";
 interface Session {
   id: string;
   org_id: string | null;
+  org_name: string | null;
+  org_slug: string | null;
   external_customer_id: string | null;
   status: string;
   created_at: string;
@@ -86,7 +88,7 @@ export default async function SessionsPage({
                     </Link>
                   </TableCell>
                   <TableCell className="text-xs text-zinc-400">
-                    {s.org_id ?? "—"}
+                    {s.org_name ?? s.org_id?.slice(0, 8) ?? "\u2014"}
                   </TableCell>
                   <TableCell className="text-xs text-zinc-400">
                     {s.external_customer_id ?? "—"}

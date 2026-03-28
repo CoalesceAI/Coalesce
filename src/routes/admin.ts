@@ -6,6 +6,8 @@ import {
   listOrgs,
   getOrgBySlug,
   createOrg,
+  updateOrg,
+  rotateSigningSecret,
   softDeleteOrg,
 } from "../repositories/organizations.js";
 import {
@@ -36,6 +38,11 @@ import {
 const CreateOrgSchema = z.object({
   slug: z.string().min(1),
   name: z.string().min(1),
+});
+
+const UpdateOrgSchema = z.object({
+  name: z.string().min(1).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const adminRoute = new Hono()
@@ -90,6 +97,73 @@ export const adminRoute = new Hono()
     });
   })
 
+  .get("/stats/timeline", async (c) => {
+    const days = Math.min(Number(c.req.query("days") ?? "30"), 90);
+    const result = await pool.query<{
+      day: string;
+      total: string;
+      resolved: string;
+      needs_info: string;
+      unknown: string;
+    }>(
+      `SELECT
+        date_trunc('day', created_at)::date AS day,
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE status = 'resolved') AS resolved,
+        COUNT(*) FILTER (WHERE status = 'needs_info') AS needs_info,
+        COUNT(*) FILTER (WHERE status = 'unknown') AS unknown
+       FROM sessions
+       WHERE created_at > now() - make_interval(days => $1)
+       GROUP BY day ORDER BY day`,
+      [days],
+    );
+    return c.json(
+      result.rows.map((r) => ({
+        day: r.day,
+        total: Number(r.total),
+        resolved: Number(r.resolved),
+        needs_info: Number(r.needs_info),
+        unknown: Number(r.unknown),
+      })),
+    );
+  })
+
+  .get("/stats/by-org", async (c) => {
+    const result = await pool.query<{
+      org_id: string;
+      org_name: string;
+      org_slug: string;
+      total: string;
+      resolved: string;
+      avg_resolution_ms: string | null;
+    }>(
+      `SELECT
+        s.org_id,
+        COALESCE(o.name, 'Unknown') AS org_name,
+        COALESCE(o.slug, 'unknown') AS org_slug,
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE s.status = 'resolved') AS resolved,
+        AVG(EXTRACT(EPOCH FROM (s.resolved_at - s.created_at)) * 1000)
+          FILTER (WHERE s.status = 'resolved' AND s.resolved_at IS NOT NULL)
+          AS avg_resolution_ms
+       FROM sessions s
+       LEFT JOIN organizations o ON o.id = s.org_id
+       WHERE s.org_id IS NOT NULL
+       GROUP BY s.org_id, o.name, o.slug
+       ORDER BY total DESC`,
+    );
+    return c.json(
+      result.rows.map((r) => ({
+        org_id: r.org_id,
+        org_name: r.org_name,
+        org_slug: r.org_slug,
+        total: Number(r.total),
+        resolved: Number(r.resolved),
+        avg_resolution_ms: r.avg_resolution_ms !== null ? Number(r.avg_resolution_ms) : null,
+      })),
+    );
+  })
+
   .get("/sessions", async (c) => {
     const limit = Math.min(Number(c.req.query("limit") ?? "50"), 100);
     const offset = Number(c.req.query("offset") ?? "0");
@@ -97,16 +171,20 @@ export const adminRoute = new Hono()
     const listResult = await pool.query<{
       id: string;
       org_id: string | null;
+      org_name: string | null;
+      org_slug: string | null;
       external_customer_id: string | null;
       status: string;
       created_at: Date;
       resolved_at: Date | null;
       turn_count: string;
     }>(
-      `SELECT id, org_id, external_customer_id, status, created_at, resolved_at,
-              jsonb_array_length(turns) AS turn_count
-       FROM sessions
-       ORDER BY created_at DESC
+      `SELECT s.id, s.org_id, o.name AS org_name, o.slug AS org_slug,
+              s.external_customer_id, s.status, s.created_at, s.resolved_at,
+              jsonb_array_length(s.turns) AS turn_count
+       FROM sessions s
+       LEFT JOIN organizations o ON o.id = s.org_id
+       ORDER BY s.created_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
@@ -119,6 +197,8 @@ export const adminRoute = new Hono()
       sessions: listResult.rows.map((row) => ({
         id: row.id,
         org_id: row.org_id,
+        org_name: row.org_name,
+        org_slug: row.org_slug,
         external_customer_id: row.external_customer_id,
         status: row.status,
         created_at: row.created_at,
@@ -197,6 +277,67 @@ export const adminRoute = new Hono()
       return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
     }
     return c.json(org);
+  })
+
+  // PATCH /admin/orgs/:slug — update org name/settings
+  .patch("/orgs/:slug", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = UpdateOrgSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid request body", code: "VALIDATION_ERROR" }, 400);
+    }
+    const updated = await updateOrg(c.req.param("slug"), parsed.data);
+    if (!updated) {
+      return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
+    }
+    return c.json(updated);
+  })
+
+  // GET /admin/orgs/:slug/stats — org-specific session stats
+  .get("/orgs/:slug/stats", async (c) => {
+    const org = await getOrgBySlug(c.req.param("slug"));
+    if (!org || org.deleted_at) {
+      return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
+    }
+    const result = await pool.query<{
+      total: string;
+      resolved: string;
+      needs_info: string;
+      unknown: string;
+      active: string;
+      avg_resolution_ms: string | null;
+    }>(
+      `SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE status = 'resolved') AS resolved,
+        COUNT(*) FILTER (WHERE status = 'needs_info') AS needs_info,
+        COUNT(*) FILTER (WHERE status = 'unknown') AS unknown,
+        COUNT(*) FILTER (WHERE status = 'active') AS active,
+        AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) * 1000)
+          FILTER (WHERE status = 'resolved' AND resolved_at IS NOT NULL)
+          AS avg_resolution_ms
+       FROM sessions WHERE org_id = $1`,
+      [org.id],
+    );
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const row = result.rows[0]!;
+    return c.json({
+      total: Number(row.total),
+      resolved: Number(row.resolved),
+      needs_info: Number(row.needs_info),
+      unknown: Number(row.unknown),
+      active: Number(row.active),
+      avg_resolution_ms: row.avg_resolution_ms !== null ? Number(row.avg_resolution_ms) : null,
+    });
+  })
+
+  // POST /admin/orgs/:slug/signing-secret/rotate — rotate signing secret
+  .post("/orgs/:slug/signing-secret/rotate", async (c) => {
+    const newSecret = await rotateSigningSecret(c.req.param("slug"));
+    if (!newSecret) {
+      return c.json({ error: "Not found", code: "NOT_FOUND" }, 404);
+    }
+    return c.json({ signing_secret: newSecret });
   })
 
   // DELETE /admin/orgs/:slug — soft delete

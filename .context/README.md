@@ -33,3 +33,7 @@ Node ≥ 22, ESM, Hono, Zod, Anthropic SDK, Postgres (`pg`), Vitest, `tsup` buil
 ```bash
 npm run dev | build | start | typecheck | test | migrate | seed | generate-url
 ```
+
+## For deeper context
+
+Product thinking, architecture rationale, agent behavior findings, and demo strategy live in **[`docs/internal/`](../docs/internal/INDEX.md)**. Start with `INDEX.md`.
