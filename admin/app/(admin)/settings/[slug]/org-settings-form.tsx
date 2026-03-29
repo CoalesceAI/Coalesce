@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 
 interface Org {
   slug: string;
@@ -32,7 +32,7 @@ export function OrgSettingsForm({ org }: { org: Org }) {
     try {
       const token = await getToken();
       const res = await fetch(
-        `${getCoalesceApiBase()}/admin/orgs/${org.slug}`,
+        `${getApoyoApiBase()}/admin/orgs/${org.slug}`,
         {
           method: "PATCH",
           headers: {

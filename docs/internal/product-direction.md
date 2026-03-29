@@ -1,7 +1,7 @@
 
-## What Coalesce is
+## What Apoyo is
 
-Self-healing support infrastructure for B2A (Business-to-Agent) companies. When an agent hits an API error, the error response includes a support URL. The agent calls it. Coalesce resolves the issue using the API company's documentation and multi-turn conversation. The agent self-heals and continues.
+Self-healing support infrastructure for B2A (Business-to-Agent) companies. When an agent hits an API error, the error response includes a support URL. The agent calls it. Apoyo resolves the issue using the API company's documentation and multi-turn conversation. The agent self-heals and continues.
 
 ## The moat thesis
 
@@ -14,7 +14,7 @@ This is "Agent-Led Growth" — helping B2A companies optimize their APIs for age
 
 ## Competitive positioning
 
-- **Plain.com:** Serves humans who manage agents. Coalesce serves agents directly. Different buyer.
+- **Plain.com:** Serves humans who manage agents. Apoyo serves agents directly. Different buyer.
 - **Pylon:** B2B human support. No agent-native features.
 - **Kapa.ai/Inkeep:** Developer docs search. Human-facing widgets.
 - Nobody does inline, structured, real-time agent error resolution.
@@ -39,6 +39,6 @@ This is "Agent-Led Growth" — helping B2A companies optimize their APIs for age
 
 ## The assignment
 
-Talk to 10 B2A companies. Get 3-5 using Coalesce by end of April. Apply to YC May deadline if validated.
+Talk to 10 B2A companies. Get 3-5 using Apoyo by end of April. Apply to YC May deadline if validated.
 
 **How to apply:** When making architecture decisions, optimize for speed to customer adoption over technical completeness. The product is done enough to sell.

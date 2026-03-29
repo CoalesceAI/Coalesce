@@ -35,7 +35,7 @@ Create `packages/types/index.ts` with shared interfaces. Update root `package.js
 { "workspaces": ["admin", "packages/types"] }
 ```
 
-`admin/package.json` adds: `"@coalesce/types": "*"` as a dependency.
+`admin/package.json` adds: `"@apoyo/types": "*"` as a dependency.
 
 Interfaces to include: `Organization`, `Session`, `ConversationTurn`, `ApiKey`. Copy from `src/domain/` — do not import from `src/` directly.
 

@@ -1,4 +1,4 @@
-# Coalesce Design System
+# Apoyo Design System
 
 **Palette:** Stone + Amber. Warm off-white surfaces in light mode, stone-950 in dark. Brand accent: amber-600 (light) / amber-400 (dark).
 

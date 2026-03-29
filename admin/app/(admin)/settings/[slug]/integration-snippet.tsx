@@ -4,10 +4,10 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 
 function snippet(lang: string, slug: string): string {
-  const API_BASE = getCoalesceApiBase();
+  const API_BASE = getApoyoApiBase();
   if (lang === "javascript") {
     return `// Add to your error response handler
 const errorResponse = {

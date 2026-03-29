@@ -9,8 +9,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Coalesce Admin",
-  description: "Coalesce admin dashboard",
+  title: "Apoyo Admin",
+  description: "Apoyo admin dashboard",
 };
 
 export default function RootLayout({

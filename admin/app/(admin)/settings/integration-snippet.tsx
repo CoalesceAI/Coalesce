@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 import { Copy, Check } from "lucide-react";
 
 type Lang = "javascript" | "python" | "curl";
@@ -31,7 +31,7 @@ const LANGS: { id: Lang; label: string }[] = [
 
 /** Multi-line snippets so long URLs don’t require horizontal panning; container still scrolls if needed. */
 function snippet(lang: Lang, slug: string): string {
-  const API_BASE = getCoalesceApiBase();
+  const API_BASE = getApoyoApiBase();
   const supportPath = `${API_BASE}/support/${slug}`;
   if (lang === "javascript") {
     return `// Add to your error response handler
@@ -82,7 +82,7 @@ export function IntegrationSnippet({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">How Coalesce works</CardTitle>
+          <CardTitle className="text-base">How Apoyo works</CardTitle>
           <CardDescription>
             Add two fields to your API error responses:{" "}
             <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">support</code> and{" "}

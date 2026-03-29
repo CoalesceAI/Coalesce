@@ -6,7 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 const ALLOWED_TYPES = [
   "application/pdf",
   "text/plain",
@@ -45,7 +45,7 @@ export function FileUploadForm({ slug }: { slug: string }) {
       const token = await getToken();
       const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
-      const urlRes = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/upload-url`, {
+      const urlRes = await fetch(`${getApoyoApiBase()}/admin/orgs/${slug}/docs/upload-url`, {
         method: "POST",
         headers,
         body: JSON.stringify({ filename: file.name, contentType: file.type || "application/octet-stream" }),
@@ -60,7 +60,7 @@ export function FileUploadForm({ slug }: { slug: string }) {
           body: file,
         });
 
-        const confirmRes = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/upload`, {
+        const confirmRes = await fetch(`${getApoyoApiBase()}/admin/orgs/${slug}/docs/upload`, {
           method: "POST",
           headers,
           body: JSON.stringify({ storageKey, filename: file.name }),
@@ -79,7 +79,7 @@ export function FileUploadForm({ slug }: { slug: string }) {
           return;
         }
         const { blobUrl } = await uploadRes.json();
-        const confirmRes = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/docs/upload`, {
+        const confirmRes = await fetch(`${getApoyoApiBase()}/admin/orgs/${slug}/docs/upload`, {
           method: "POST",
           headers,
           body: JSON.stringify({ blobUrl, filename: file.name }),

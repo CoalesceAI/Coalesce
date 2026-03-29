@@ -156,7 +156,7 @@ export default async function SessionDetailPage({
                     turn.role === "user" ? "text-blue-400" : "text-green-400"
                   }`}
                 >
-                  {turn.role === "user" ? "Agent" : "Coalesce"}
+                  {turn.role === "user" ? "Agent" : "Apoyo"}
                 </span>
               </div>
               <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-mono leading-relaxed">

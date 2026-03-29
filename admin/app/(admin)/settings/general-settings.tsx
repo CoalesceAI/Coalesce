@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 import { useOrg, type OrgWithRole } from "@/lib/org-context";
 
 export function OrgGeneralSettings({ org }: { org: OrgWithRole }) {
@@ -26,7 +26,7 @@ export function OrgGeneralSettings({ org }: { org: OrgWithRole }) {
 
   async function patchOrg(body: Record<string, unknown>) {
     const token = await getToken();
-    const res = await fetch(`${getCoalesceApiBase()}/admin/orgs/${org.slug}`, {
+    const res = await fetch(`${getApoyoApiBase()}/admin/orgs/${org.slug}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -135,7 +135,7 @@ export function OrgGeneralSettings({ org }: { org: OrgWithRole }) {
               <p className="text-xs text-muted-foreground">
                 Your support URL:{" "}
                 <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                  {getCoalesceApiBase()}/support/{org.slug}
+                  {getApoyoApiBase()}/support/{org.slug}
                 </code>
               </p>
             </div>

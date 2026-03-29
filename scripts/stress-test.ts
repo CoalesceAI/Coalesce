@@ -19,7 +19,7 @@ dotenv.config({ path: 'demo/claude/.env' });
 
 const AGENTMAIL_BASE = process.env['AGENTMAIL_BASE_URL'] ?? 'https://api.tanishq.amail.dev/v0';
 const AGENTMAIL_KEY = process.env['AGENTMAIL_API_KEY']!;
-const APOYO_URL = 'https://coalesce-production.up.railway.app';
+const APOYO_URL = 'https://apoyo-production.up.railway.app';
 const APOYO_KEY = process.env['APOYO_API_KEY']!;
 
 const NUM_AGENTS = Number(process.argv[2] ?? 10);

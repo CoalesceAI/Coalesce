@@ -4,7 +4,7 @@
 // NEXT_PUBLIC_API_URL must be the Hono API origin (e.g. http://localhost:3000).
 // Empty string is treated as unset — otherwise fetch("/admin/...") hits Next.js and 404s.
 
-import { getCoalesceApiBase } from "./api-base";
+import { getApoyoApiBase } from "./api-base";
 
 export class AdminApiError extends Error {
   constructor(
@@ -32,7 +32,7 @@ function htmlWrongServerMessage(status: number): string {
 }
 
 function buildUrl(path: string): string {
-  const base = getCoalesceApiBase();
+  const base = getApoyoApiBase();
   const p = path.startsWith("/") ? path : `/${path}`;
   const url = `${base}${p}`;
   if (!url.startsWith("http://") && !url.startsWith("https://")) {

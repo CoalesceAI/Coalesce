@@ -1,4 +1,4 @@
-# Coalesce
+# Apoyo
 
 Self-healing support infrastructure for B2A companies: agents call a support URL, get structured diagnosis, and continue. This repo is a **small monorepo**: a **Hono** HTTP API server and a **Next.js** admin dashboard.
 

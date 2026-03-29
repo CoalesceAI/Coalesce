@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 import { Button } from "@/components/ui/button";
 
 export function DocActions({
@@ -25,7 +25,7 @@ export function DocActions({
     try {
       const token = await getToken();
       await fetch(
-        `${getCoalesceApiBase()}/admin/orgs/${slug}/docs/${sourceId}/sync`,
+        `${getApoyoApiBase()}/admin/orgs/${slug}/docs/${sourceId}/sync`,
         { method: "POST", headers: { Authorization: `Bearer ${token}` } },
       );
       router.refresh();
@@ -39,7 +39,7 @@ export function DocActions({
     try {
       const token = await getToken();
       await fetch(
-        `${getCoalesceApiBase()}/admin/orgs/${slug}/docs/${sourceId}`,
+        `${getApoyoApiBase()}/admin/orgs/${slug}/docs/${sourceId}`,
         { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
       );
       router.refresh();

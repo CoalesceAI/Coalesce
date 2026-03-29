@@ -150,7 +150,7 @@ async function runAgent(agentId: number): Promise<void> {
           }
 
           // Track: did agent use HTTP support URL instead?
-          if (input.command.includes('coalesce-production.up.railway.app')) {
+          if (input.command.includes('apoyo-production.up.railway.app')) {
             if (!localUsedHttp) {
               stats.usedHttpSupport++;
               localUsedHttp = true;

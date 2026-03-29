@@ -1,4 +1,4 @@
-# Coalesce — project context
+# Apoyo — project context
 
 Short onboarding reference. Authoritative commands and conventions: root **`CLAUDE.md`**.
 

@@ -9,7 +9,7 @@ import { listUserOrgs, type OrgWithRole } from "./organization-members.js";
 // ---------------------------------------------------------------------------
 
 function advisoryKeys(userId: string): [number, number] {
-  const buf = createHash("sha256").update(`coalesce:bootstrap:${userId}`).digest();
+  const buf = createHash("sha256").update(`apoyo:bootstrap:${userId}`).digest();
   const k1 = buf.readUInt32BE(0) & 0x7fffffff;
   const k2 = buf.readUInt32BE(4) & 0x7fffffff;
   return [k1 || 1, k2 || 1];

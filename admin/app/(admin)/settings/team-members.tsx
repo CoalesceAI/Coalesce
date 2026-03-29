@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 import { UserPlus, Shield, User, Trash2 } from "lucide-react";
 
 interface Member {
@@ -56,7 +56,7 @@ export function OrgTeamMembers({
     try {
       const token = await getToken();
       const res = await fetch(
-        `${getCoalesceApiBase()}/admin/orgs/${slug}/members`,
+        `${getApoyoApiBase()}/admin/orgs/${slug}/members`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (res.ok) setMembers(await res.json());
@@ -76,7 +76,7 @@ export function OrgTeamMembers({
     try {
       const token = await getToken();
       const res = await fetch(
-        `${getCoalesceApiBase()}/admin/orgs/${slug}/members`,
+        `${getApoyoApiBase()}/admin/orgs/${slug}/members`,
         {
           method: "POST",
           headers: {
@@ -105,7 +105,7 @@ export function OrgTeamMembers({
   async function updateRole(userId: string, role: "admin" | "member") {
     const token = await getToken();
     const res = await fetch(
-      `${getCoalesceApiBase()}/admin/orgs/${slug}/members/${userId}`,
+      `${getApoyoApiBase()}/admin/orgs/${slug}/members/${userId}`,
       {
         method: "PATCH",
         headers: {
@@ -127,7 +127,7 @@ export function OrgTeamMembers({
   async function removeMember(userId: string) {
     const token = await getToken();
     const res = await fetch(
-      `${getCoalesceApiBase()}/admin/orgs/${slug}/members/${userId}`,
+      `${getApoyoApiBase()}/admin/orgs/${slug}/members/${userId}`,
       {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@clerk/nextjs";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 import { useOrg } from "@/lib/org-context";
 
 export function CreateOrgForm() {
@@ -23,7 +23,7 @@ export function CreateOrgForm() {
     setLoading(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${getCoalesceApiBase()}/admin/orgs`, {
+      const res = await fetch(`${getApoyoApiBase()}/admin/orgs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

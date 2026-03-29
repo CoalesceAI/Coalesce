@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
-import { getCoalesceApiBase } from "./api-base";
+import { getApoyoApiBase } from "./api-base";
 
 export interface OrgWithRole {
   id: string;
@@ -42,7 +42,7 @@ const OrgContext = createContext<OrgContextValue>({
   refreshOrgs: async () => {},
 });
 
-const STORAGE_KEY = "coalesce_current_org";
+const STORAGE_KEY = "apoyo_current_org";
 
 export function OrgProvider({ children }: { children: ReactNode }) {
   const { getToken, isLoaded, isSignedIn } = useAuth();
@@ -77,7 +77,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const base = getCoalesceApiBase();
+      const base = getApoyoApiBase();
       const res = await fetch(`${base}/admin/me/orgs`, {
         headers: { Authorization: `Bearer ${token}` },
       });

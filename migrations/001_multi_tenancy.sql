@@ -1,5 +1,5 @@
 -- 001_multi_tenancy.sql
--- Multi-tenancy schema for Coalesce
+-- Multi-tenancy schema for Apoyo
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 

@@ -4,7 +4,7 @@ dotenv.config({ path: 'demo/claude/.env' }); // Load demo env (has AGENTMAIL key
 
 const AGENTMAIL_BASE_URL = process.env['AGENTMAIL_BASE_URL'] ?? 'https://api.tanishq.amail.dev/v0';
 const AGENTMAIL_API_KEY = process.env['AGENTMAIL_API_KEY']!;
-const APOYO_URL = 'https://coalesce-production.up.railway.app';
+const APOYO_URL = 'https://apoyo-production.up.railway.app';
 const APOYO_API_KEY = process.env['APOYO_API_KEY']!;
 
 const CONCURRENCY = 10; // agents running at once

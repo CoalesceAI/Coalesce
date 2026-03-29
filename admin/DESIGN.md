@@ -1,6 +1,6 @@
-# Coalesce Admin — Design System
+# Apoyo Admin — Design System
 
-The admin UI is the **control plane** for Coalesce. It is not the agent-facing support path. Design goals: clarity, density, and polish — inspired by Linear, Cursor, and Resend.
+The admin UI is the **control plane** for Apoyo. It is not the agent-facing support path. Design goals: clarity, density, and polish — inspired by Linear, Cursor, and Resend.
 
 ## Stack
 

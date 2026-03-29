@@ -1,6 +1,6 @@
-# Coalesce Admin UI
+# Apoyo Admin UI
 
-Next.js 14 admin dashboard for managing Coalesce organizations, knowledge bases, sessions, and integrations.
+Next.js 14 admin dashboard for managing Apoyo organizations, knowledge bases, sessions, and integrations.
 
 Monorepo context: the **Hono API** lives in the repo root (`src/`). See the **[root README](../README.md)** for full layout and **root `.env`** variables.
 

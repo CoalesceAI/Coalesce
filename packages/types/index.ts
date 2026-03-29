@@ -1,4 +1,4 @@
-// Shared domain interfaces for Coalesce admin UI and API server.
+// Shared domain interfaces for Apoyo admin UI and API server.
 // Copied from src/domain/ — do not import from src/ directly.
 
 export interface Organization {

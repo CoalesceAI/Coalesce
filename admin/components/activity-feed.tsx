@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 
 const ACTION_LABELS: Record<string, string> = {
   "session.created": "New support session",
@@ -36,7 +36,7 @@ export function ActivityFeed() {
     async function load() {
       try {
         const token = await getToken();
-        const res = await fetch(`${getCoalesceApiBase()}/admin/activity?limit=20`, {
+        const res = await fetch(`${getApoyoApiBase()}/admin/activity?limit=20`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) setEvents(await res.json());

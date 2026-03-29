@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with the **Coalesce** API server.
+This file provides guidance to Claude Code when working with the **Apoyo** API server.
 
-## What Coalesce Is
+## What Apoyo Is
 
-Self-healing support infrastructure for B2A companies. API errors include a support URL. Agents call it, get a structured diagnosis, apply the fix, continue working. Deployed on Railway at `coalesce-production.up.railway.app`.
+Self-healing support infrastructure for B2A companies. API errors include a support URL. Agents call it, get a structured diagnosis, apply the fix, continue working. Deployed on Railway at `apoyo-production.up.railway.app`.
 
 ## Commands
 
@@ -85,8 +85,8 @@ migrations/             # Numbered SQL (see Migrations)
 tests/
 demo/
   claude/               # Claude Code demo (CLAUDE.md + env)
-  blind-test/           # Blind test (no Coalesce hints in prompt)
-  run-demo.sh           # tmux: Coalesce server | Claude Code
+  blind-test/           # Blind test (no Apoyo hints in prompt)
+  run-demo.sh           # tmux: Apoyo server | Claude Code
 scripts/                # load-test, stress-test, blind-test, check-data, …
 ```
 
@@ -203,7 +203,7 @@ Postgres on Neon. **Core tables:** `organizations`, `api_keys`, `doc_sources`, `
 - `resolved` — `diagnosis`, `fix`, `references[]`, `fix_steps[]`
 - `needs_info` — `question`, `need_to_clarify[]`, etc.
 - `unknown` — `explanation`
-- `error` — Coalesce-side failure: `message`, `code` (HTTP 500)
+- `error` — Apoyo-side failure: `message`, `code` (HTTP 500)
 
 Responses include `session_id` and `turn_number` for multi-turn correlation. Follow-up requests must send `session_id` and `answer` (see `SupportRequestSchema`) so conversation continues on the same session.
 
@@ -213,15 +213,15 @@ Product and strategy live in `docs/internal/`. See [`docs/internal/INDEX.md`](do
 
 **Product direction** (`product-direction.md`): Support endpoint as data funnel; roadmap through behavioral intelligence and Agent-Led Growth.
 
-**Architecture** (`coalesce-v2-architecture.md`, `coalesce-clarity.md`): Prefer simplicity; avoid unnecessary caching/complexity for early scale.
+**Architecture** (`apoyo-v2-architecture.md`, `apoyo-clarity.md`): Prefer simplicity; avoid unnecessary caching/complexity for early scale.
 
 **Agent behavior** (`agent-behavior-findings.md`): Bare support URLs are easy to ignore; `support_hint` and signed URLs reduce friction.
 
-**Demo** (`coalesce-demo-strategy.md`): Positioning for investors and design partners (e.g. AgentMail).
+**Demo** (`apoyo-demo-strategy.md`): Positioning for investors and design partners (e.g. AgentMail).
 
 ## Deployment
 
-- **Coalesce API:** Railway at `coalesce-production.up.railway.app`
+- **Apoyo API:** Railway at `apoyo-production.up.railway.app`
 - **Storage:** Railway Buckets (S3-compatible) for document uploads
 - **Admin UI:** TBD (Railway or Vercel)
 - **AgentMail integration:** Multiple stacks. Error responses include `support` URL + `support_hint`. Deploy consistently; force clean builds when needed (`rm -rf dist/ temp/` before deploy if your pipeline requires it).

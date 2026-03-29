@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 
 export function ExportSessionsButton() {
   const { getToken } = useAuth();
@@ -18,7 +18,7 @@ export function ExportSessionsButton() {
         toast.error("Not signed in");
         return;
       }
-      const res = await fetch(`${getCoalesceApiBase()}/admin/sessions/export`, {
+      const res = await fetch(`${getApoyoApiBase()}/admin/sessions/export`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {

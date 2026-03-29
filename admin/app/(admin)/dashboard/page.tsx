@@ -19,7 +19,7 @@ import { RefreshButton } from "@/components/refresh-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 
 interface Stats {
   total: number;
@@ -82,7 +82,7 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const token = await getToken();
-      const base = getCoalesceApiBase();
+      const base = getApoyoApiBase();
       const headers = { Authorization: `Bearer ${token}` };
       const slug = currentOrg.slug;
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 
 export function RotateSecretButton({ slug }: { slug: string }) {
   const router = useRouter();
@@ -18,7 +18,7 @@ export function RotateSecretButton({ slug }: { slug: string }) {
     try {
       const token = await getToken();
       const res = await fetch(
-        `${getCoalesceApiBase()}/admin/orgs/${slug}/signing-secret/rotate`,
+        `${getApoyoApiBase()}/admin/orgs/${slug}/signing-secret/rotate`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },

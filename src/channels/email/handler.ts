@@ -141,7 +141,7 @@ function formatReply(diagnosis: { status: string; [key: string]: unknown }): str
         ? [``, `**References:** ${d.references.join(', ')}`]
         : []),
       ``,
-      `— Coalesce (automated support)`,
+      `— Apoyo (automated support)`,
     ].join('\n');
   }
 
@@ -157,7 +157,7 @@ function formatReply(diagnosis: { status: string; [key: string]: unknown }): str
       ``,
       `Just reply to this email with the details.`,
       ``,
-      `— Coalesce (automated support)`,
+      `— Apoyo (automated support)`,
     ].join('\n');
   }
 
@@ -168,13 +168,13 @@ function formatReply(diagnosis: { status: string; [key: string]: unknown }): str
       ``,
       d.explanation || 'This may require manual investigation.',
       ``,
-      `— Coalesce (automated support)`,
+      `— Apoyo (automated support)`,
     ].join('\n');
   }
 
   return [
     `We encountered an error processing your support request.`,
     ``,
-    `— Coalesce (automated support)`,
+    `— Apoyo (automated support)`,
   ].join('\n');
 }

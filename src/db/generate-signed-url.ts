@@ -4,7 +4,7 @@ import { generateSignedBaseUrl } from '../domain/signed-url.js';
 
 async function main() {
   const slug = process.argv[2] ?? 'agentmail';
-  const apoyoUrl = process.argv[3] ?? 'https://coalesce-production.up.railway.app';
+  const apoyoUrl = process.argv[3] ?? 'https://apoyo-production.up.railway.app';
 
   const result = await query<{ slug: string; signing_secret: string }>(
     'SELECT slug, signing_secret FROM organizations WHERE slug = $1',

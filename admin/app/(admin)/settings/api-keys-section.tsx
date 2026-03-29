@@ -28,7 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { getCoalesceApiBase } from "@/lib/api-base";
+import { getApoyoApiBase } from "@/lib/api-base";
 import { Plus } from "lucide-react";
 
 interface ApiKey {
@@ -56,7 +56,7 @@ export function OrgApiKeys({ slug }: { slug: string }) {
   const fetchKeys = useCallback(async () => {
     try {
       const token = await getToken();
-      const res = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/keys`, {
+      const res = await fetch(`${getApoyoApiBase()}/admin/orgs/${slug}/keys`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setKeys(await res.json());
@@ -73,7 +73,7 @@ export function OrgApiKeys({ slug }: { slug: string }) {
     setGenerating(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/keys`, {
+      const res = await fetch(`${getApoyoApiBase()}/admin/orgs/${slug}/keys`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -93,7 +93,7 @@ export function OrgApiKeys({ slug }: { slug: string }) {
     setRevoking(true);
     try {
       const token = await getToken();
-      await fetch(`${getCoalesceApiBase()}/admin/orgs/${slug}/keys/${keyId}`, {
+      await fetch(`${getApoyoApiBase()}/admin/orgs/${slug}/keys/${keyId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -110,7 +110,7 @@ export function OrgApiKeys({ slug }: { slug: string }) {
     try {
       const token = await getToken();
       const res = await fetch(
-        `${getCoalesceApiBase()}/admin/orgs/${slug}/signing-secret/rotate`,
+        `${getApoyoApiBase()}/admin/orgs/${slug}/signing-secret/rotate`,
         { method: "POST", headers: { Authorization: `Bearer ${token}` } },
       );
       if (res.ok) {
