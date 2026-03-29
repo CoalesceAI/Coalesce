@@ -157,6 +157,10 @@ describe('POST /support', () => {
     const body = await res.json();
     expect(body.status).toBe('error');
     expect(body.code).toBe('CLAUDE_ERROR');
+
+    const stored = await store.get(body.session_id as string);
+    expect(stored?.status).toBe('unknown');
+    expect(stored?.turns.length).toBe(2);
   });
 });
 

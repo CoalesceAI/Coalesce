@@ -92,7 +92,8 @@ export function supportRoute(
         },
       };
 
-      await sessionStore.set(id, session);
+      // Do not persist until after diagnose + turns are applied — avoids orphan
+      // rows with status active and zero turns if the final upsert fails.
       turnNumber = 1;
       isFollowUp = false;
     }
@@ -118,12 +119,17 @@ export function supportRoute(
     session.turns.push({ role: 'assistant', content: assistantContent });
     session.lastAccessedAt = Date.now();
 
-    const statusMap: Record<string, 'resolved' | 'needs_info' | 'unknown' | 'active'> = {
+    const statusMap: Record<string, 'resolved' | 'needs_info' | 'unknown'> = {
       resolved: 'resolved',
       needs_info: 'needs_info',
       unknown: 'unknown',
     };
-    session.status = statusMap[diagnosisResult.status] ?? 'active';
+    if (diagnosisResult.status === 'error') {
+      // Persist as unknown — domain has no error status; HTTP still returns 500 + error body.
+      session.status = 'unknown';
+    } else {
+      session.status = statusMap[diagnosisResult.status] ?? 'unknown';
+    }
     if (session.status === 'resolved' && !session.resolvedAt) {
       session.resolvedAt = Date.now();
     }

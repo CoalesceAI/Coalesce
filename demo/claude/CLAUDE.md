@@ -25,6 +25,7 @@ Authorization: Bearer $APOYO_API_KEY
 Content-Type: application/json
 Body: {}
 ```
+The JSON response includes `session_id`. **Every later call to Coalesce for this same error must reuse that `session_id`** (otherwise each POST without `session_id` creates a **new** session and you will see duplicate rows in the admin UI).
 
 **Step 2 — If Apoyo asks questions (`status: "needs_info"`):**
 ```
