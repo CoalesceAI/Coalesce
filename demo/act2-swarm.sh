@@ -7,6 +7,8 @@ echo "  Act 2: 20 agents. Autonomous resolution."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-cd /Users/tkam/Desktop/Coalesce
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$ROOT"
 source demo/claude/.env
 npx tsx scripts/stress-test.ts 20 5

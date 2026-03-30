@@ -1,9 +1,11 @@
 #!/bin/bash
 # Terminal 1: Swarm — full window, just the counter
-cd /Users/tkam/Desktop/Coalesce
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$ROOT"
 source demo/claude/.env
 
-# Start Coalesce server in background if not running
+# Start Apoyo server in background if not running
 curl -s http://localhost:3000/health > /dev/null 2>&1 || {
   npm run dev > /tmp/apoyo-server.log 2>&1 &
   sleep 4

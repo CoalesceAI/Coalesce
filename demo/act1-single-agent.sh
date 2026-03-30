@@ -2,7 +2,9 @@
 # Act 1: Single agent hits error → Apoyo resolves → agent retries → success
 # Run this in the right pane while Screen Studio records
 
-source /Users/tkam/Desktop/Coalesce/demo/claude/.env
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$ROOT/demo/claude/.env"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Act 1: Agent hits an error"

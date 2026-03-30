@@ -12,7 +12,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 dotenv.config({ path: 'demo/claude/.env' });
 
-const APOYO_URL = 'https://coalesce-production.up.railway.app';
+const APOYO_URL = 'https://apoyo-production.up.railway.app';
 const APOYO_KEY = process.env['APOYO_API_KEY']!;
 
 const NUM_AGENTS = Number(process.argv[2] ?? 10);

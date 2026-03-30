@@ -3,6 +3,8 @@ export interface ConversationTurn {
   content: string;
 }
 
+export type SessionStatus = 'active' | 'resolved' | 'needs_info' | 'unknown';
+
 export interface Session {
   id: string;
   orgId?: string;
@@ -10,6 +12,8 @@ export interface Session {
   emailThreadId?: string;
   createdAt: number;
   lastAccessedAt: number;
+  status: SessionStatus;
+  resolvedAt?: number;
   turns: ConversationTurn[];
   originalRequest: {
     endpoint: string;

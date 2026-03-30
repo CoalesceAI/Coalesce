@@ -141,13 +141,13 @@ export function wsRoute(
                   .filter(Boolean)
               : undefined;
 
-          // --- Create session with orgId ---
           const session: Session = {
             id: crypto.randomUUID(),
             orgId,
             externalCustomerId: customerId,
             createdAt: Date.now(),
             lastAccessedAt: Date.now(),
+            status: 'active',
             turns: [],
             originalRequest: {
               endpoint,
@@ -182,11 +182,18 @@ export function wsRoute(
             orgName,
           );
 
-          // Store turns in session
           const userContent = buildUserMessage(initialRequest, false);
           session.turns.push({ role: 'user', content: userContent });
           session.turns.push({ role: 'assistant', content: assistantContent });
           session.lastAccessedAt = Date.now();
+
+          const wsStatusMap: Record<string, 'resolved' | 'needs_info' | 'unknown' | 'active'> = {
+            resolved: 'resolved', needs_info: 'needs_info', unknown: 'unknown',
+          };
+          session.status = wsStatusMap[response.status] ?? 'active';
+          if (session.status === 'resolved' && !session.resolvedAt) {
+            session.resolvedAt = Date.now();
+          }
           await sessionStore.set(session.id, session);
 
           // Guard against client disconnecting during diagnose() call
@@ -297,11 +304,18 @@ export function wsRoute(
             orgName,
           );
 
-          // Store turns
           const userContent = buildUserMessage(followUpRequest, true);
           session.turns.push({ role: 'user', content: userContent });
           session.turns.push({ role: 'assistant', content: assistantContent });
           session.lastAccessedAt = Date.now();
+
+          const followStatusMap: Record<string, 'resolved' | 'needs_info' | 'unknown' | 'active'> = {
+            resolved: 'resolved', needs_info: 'needs_info', unknown: 'unknown',
+          };
+          session.status = followStatusMap[diagResult.status] ?? 'active';
+          if (session.status === 'resolved' && !session.resolvedAt) {
+            session.resolvedAt = Date.now();
+          }
           await sessionStore.set(session.id, session);
 
           // Guard against disconnection during diagnose() call

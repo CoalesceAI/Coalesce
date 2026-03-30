@@ -81,6 +81,7 @@ export function supportRoute(
         externalCustomerId: customerId,
         createdAt: Date.now(),
         lastAccessedAt: Date.now(),
+        status: 'active',
         turns: [],
         originalRequest: {
           endpoint: data.endpoint ?? '',
@@ -91,7 +92,8 @@ export function supportRoute(
         },
       };
 
-      await sessionStore.set(id, session);
+      // Do not persist until after diagnose + turns are applied — avoids orphan
+      // rows with status active and zero turns if the final upsert fails.
       turnNumber = 1;
       isFollowUp = false;
     }
@@ -109,13 +111,29 @@ export function supportRoute(
     );
 
     // -----------------------------------------------------------------------
-    // Store current user turn + assistant turn in session
+    // Store current user turn + assistant turn in session, update status
     // -----------------------------------------------------------------------
 
     const userContent = buildUserMessage(data, isFollowUp);
     session.turns.push({ role: 'user', content: userContent });
     session.turns.push({ role: 'assistant', content: assistantContent });
     session.lastAccessedAt = Date.now();
+
+    const statusMap: Record<string, 'resolved' | 'needs_info' | 'unknown'> = {
+      resolved: 'resolved',
+      needs_info: 'needs_info',
+      unknown: 'unknown',
+    };
+    if (diagnosisResult.status === 'error') {
+      // Persist as unknown — domain has no error status; HTTP still returns 500 + error body.
+      session.status = 'unknown';
+    } else {
+      session.status = statusMap[diagnosisResult.status] ?? 'unknown';
+    }
+    if (session.status === 'resolved' && !session.resolvedAt) {
+      session.resolvedAt = Date.now();
+    }
+
     await sessionStore.set(session.id, session);
 
     // -----------------------------------------------------------------------

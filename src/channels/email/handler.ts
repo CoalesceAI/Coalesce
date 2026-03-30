@@ -67,6 +67,7 @@ export async function handleIncomingEmail(
       emailThreadId: thread.thread_id,
       createdAt: Date.now(),
       lastAccessedAt: Date.now(),
+      status: 'active',
       turns: [],
       originalRequest: {
         endpoint: parsed.endpoint ?? '',

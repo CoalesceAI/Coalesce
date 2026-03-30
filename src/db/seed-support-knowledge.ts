@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import fs from 'node:fs';
+import { resolve } from 'node:path';
 import { query, pool } from './pool.js';
 
 async function main() {
@@ -36,7 +37,8 @@ async function main() {
   console.log('Source ID:', sourceId);
 
   // Load anonymized patterns (NO raw customer data)
-  const content = fs.readFileSync('/Users/tkam/Desktop/Coalesce/support-patterns.md', 'utf-8');
+  const patternsPath = resolve(import.meta.dirname, '../../support-patterns.md');
+  const content = fs.readFileSync(patternsPath, 'utf-8');
 
   await query(
     'INSERT INTO doc_content (org_id, source_id, title, content) VALUES ($1, $2, $3, $4)',

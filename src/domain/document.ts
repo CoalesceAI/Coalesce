@@ -4,6 +4,10 @@ export interface DocSource {
   source_type: string;
   source_path: string;
   loaded_at: Date;
+  status: string;
+  config: Record<string, unknown>;
+  error_message: string | null;
+  last_sync_at: Date | null;
 }
 
 export interface DocContent {

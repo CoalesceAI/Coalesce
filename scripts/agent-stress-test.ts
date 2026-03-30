@@ -137,7 +137,7 @@ async function runAgent(agentId: number): Promise<void> {
           }
 
           // Track support URL visibility
-          if (output.includes('"support"') && output.includes('coalesce')) {
+          if (output.includes('"support"') && output.includes('apoyo')) {
             if (!localSupportSeen) {
               stats.supportUrlSeen++;
               localSupportSeen = true;
@@ -145,7 +145,7 @@ async function runAgent(agentId: number): Promise<void> {
           }
 
           // Track support URL usage
-          if (input.command.includes('coalesce-production.up.railway.app')) {
+          if (input.command.includes('apoyo-production.up.railway.app')) {
             if (!localSupportCalled) {
               stats.supportUrlCalled++;
               localSupportCalled = true;

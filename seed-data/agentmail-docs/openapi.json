@@ -1,0 +1,9 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AgentMail API",
+    "description": "Minimal OpenAPI stub for local seeding. Replace with the real spec via OPENAPI_PATH.",
+    "version": "0.0.0"
+  },
+  "paths": {}
+}
