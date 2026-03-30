@@ -113,6 +113,7 @@ export async function handleIncomingEmail(
   const replyText = formatReply(diagnosis);
 
   // Send reply
+  console.log(`[email] Replying via ${config.agentmailBaseUrl}/inboxes/${message.inbox_id}/messages/${message.message_id}/reply`);
   await sendReply({
     agentmailBaseUrl: config.agentmailBaseUrl,
     agentmailApiKey: config.agentmailApiKey,
@@ -140,7 +141,7 @@ function formatReply(diagnosis: { status: string; [key: string]: unknown }): str
         ? [``, `**References:** ${d.references.join(', ')}`]
         : []),
       ``,
-      `— Coalesce (automated support)`,
+      `— AgentMail Support`,
     ].join('\n');
   }
 
@@ -156,7 +157,7 @@ function formatReply(diagnosis: { status: string; [key: string]: unknown }): str
       ``,
       `Just reply to this email with the details.`,
       ``,
-      `— Coalesce (automated support)`,
+      `— AgentMail Support`,
     ].join('\n');
   }
 
@@ -167,13 +168,13 @@ function formatReply(diagnosis: { status: string; [key: string]: unknown }): str
       ``,
       d.explanation || 'This may require manual investigation.',
       ``,
-      `— Coalesce (automated support)`,
+      `— AgentMail Support`,
     ].join('\n');
   }
 
   return [
     `We encountered an error processing your support request.`,
     ``,
-    `— Coalesce (automated support)`,
+    `— AgentMail Support`,
   ].join('\n');
 }
