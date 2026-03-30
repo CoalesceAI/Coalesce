@@ -147,13 +147,13 @@ function formatReply(diagnosis: { status: string; [key: string]: unknown }): str
 
   if (diagnosis.status === 'needs_info') {
     const d = diagnosis as { status: 'needs_info'; question?: string; need_to_clarify?: string[] };
+    const questions = d.need_to_clarify?.length
+      ? d.need_to_clarify.map(q => `- ${q}`).join('\n')
+      : d.question || 'Could you provide more details about the error?';
     return [
       `We need a bit more info to diagnose this:`,
       ``,
-      d.question || 'Could you provide more details about the error?',
-      ...(d.need_to_clarify?.length
-        ? [``, `Specifically:`, ...d.need_to_clarify.map(q => `- ${q}`)]
-        : []),
+      questions,
       ``,
       `Just reply to this email with the details.`,
       ``,
