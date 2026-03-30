@@ -114,6 +114,7 @@ export async function handleIncomingEmail(
   const replyText = formatReply(diagnosis);
 
   // Send reply
+  console.log(`[email] Replying via ${config.agentmailBaseUrl}/inboxes/${message.inbox_id}/messages/${message.message_id}/reply`);
   await sendReply({
     agentmailBaseUrl: config.agentmailBaseUrl,
     agentmailApiKey: config.agentmailApiKey,
@@ -141,23 +142,23 @@ function formatReply(diagnosis: { status: string; [key: string]: unknown }): str
         ? [``, `**References:** ${d.references.join(', ')}`]
         : []),
       ``,
-      `— Apoyo (automated support)`,
+      `— AgentMail Support`,
     ].join('\n');
   }
 
   if (diagnosis.status === 'needs_info') {
     const d = diagnosis as { status: 'needs_info'; question?: string; need_to_clarify?: string[] };
+    const questions = d.need_to_clarify?.length
+      ? d.need_to_clarify.map(q => `- ${q}`).join('\n')
+      : d.question || 'Could you provide more details about the error?';
     return [
       `We need a bit more info to diagnose this:`,
       ``,
-      d.question || 'Could you provide more details about the error?',
-      ...(d.need_to_clarify?.length
-        ? [``, `Specifically:`, ...d.need_to_clarify.map(q => `- ${q}`)]
-        : []),
+      questions,
       ``,
       `Just reply to this email with the details.`,
       ``,
-      `— Apoyo (automated support)`,
+      `— AgentMail Support`,
     ].join('\n');
   }
 
@@ -168,13 +169,13 @@ function formatReply(diagnosis: { status: string; [key: string]: unknown }): str
       ``,
       d.explanation || 'This may require manual investigation.',
       ``,
-      `— Apoyo (automated support)`,
+      `— AgentMail Support`,
     ].join('\n');
   }
 
   return [
     `We encountered an error processing your support request.`,
     ``,
-    `— Apoyo (automated support)`,
+    `— AgentMail Support`,
   ].join('\n');
 }
